@@ -1,131 +1,175 @@
-# Open Quantum Computer Vision
+<a id="readme-top"></a>
 
-A unified library for quantum image representation and processing, inspired by OpenCV but designed for quantum computing.
+<div align="center">
 
-## Overview
+<h3 align="center">openqcv</h3>
 
-This library unifies various quantum image representation algorithms and provides quantum image processing operations. It combines the best of existing quantum image processing frameworks into a cohesive, easy-to-use package.
+  <p align="center">
+    Quantum image representations: encode, export to OpenQASM, run, decode, draw.
+  </p>
+</div>
 
-## Key Features
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#goals">Goals</a></li>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#installation">Installation</a></li>
+      </ul>
+    </li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#acknowledgments">Acknowledgments</a></li>
+  </ol>
+</details>
 
-- **Unified API**: Consistent interface across different quantum image representations
-- **Multiple Encodings**: Support for both amplitude-encoded and computational basis-encoded schemes
-- **Quantum Processing**: Built-in quantum image processing operations like denoising
-- **Comprehensive Metrics**: Full suite of image quality assessment metrics
-- **Inspired by OpenCV**: Familiar API design for classical computer vision users
+## About The Project
 
-## Supported Representations
+<img src="docs/images/neqr_circuit.png" width="60%" alt="NEQR circuit for a 2x2 image">
 
-### Amplitude Encoded
+openqcv encodes images into quantum circuits (QPIE, FRQI, NEQR), exports them
+as OpenQASM 2/3 with the metadata needed to decode, runs them on a backend and
+decodes the result back into an image. Circuits are drawn as black-and-white,
+textbook-style figures.
 
-- **QARQI**: Quadrant Amplitude Representation of Quantum Images
-  - Uses qudits for efficient encoding
-  - Polarity-magnitude coordinate system
-  - Controlled RY rotations for intensity encoding
+### Goals
 
-- **FRQI**: Flexible Representation of Quantum Images
-  - Position in basis states, intensity in amplitudes
-  - Supports flexible quantum operations
-  - Citation: Le et al. (2011)
+1. Correct first: every representation round-trips exactly in the tests.
+2. Nothing hidden: all data needed to decode is in the program, in the open.
+3. Textbook circuits: standard gates only, drawn as they would be in a paper.
+4. Backend independence: representations and backends share only OpenQASM.
+5. Nothing speculative: features are added when specified, not in advance.
 
-### Computational Basis Encoded
+Design rules for contributors are in [AGENTS.md](AGENTS.md).
 
-- **MHRQI**: Multi-scale Hierarchical Representation of Quantum Images
-  - Hierarchical quantum circuits
-  - Basis state encoding for intensities
-  - Built-in denoising capabilities
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-- **NEQR**: Novel Enhanced Quantum Representation of digital images
-  - Both position and intensity in basis states
-  - Supports grayscale and color images
-  - Citation: Zhang et al. (2013)
+### Built With
 
-## Installation
+* [![Python][Python-badge]][Python-url]
+* [![Qiskit][Qiskit-badge]][Qiskit-url]
+* [![NumPy][NumPy-badge]][NumPy-url]
+* [![Matplotlib][Matplotlib-badge]][Matplotlib-url]
 
-```bash
-pip install open-quantum-computer-vision
-```
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-Or from source:
+## Getting Started
 
-```bash
-git clone https://github.com/your-repo/open-quantum-computer-vision
-cd open-quantum-computer-vision
-pip install -e .
-```
+### Prerequisites
 
-## Quick Start
+* Python 3.10 or newer
+
+### Installation
+
+1. Clone the repo
+   ```sh
+   git clone https://github.com/Keno-00/open-quantum-computer-vision.git
+   ```
+2. Install it (editable)
+   ```sh
+   pip install -e open-quantum-computer-vision
+   ```
+3. Optional extras: `[image]` for `load_image` (Pillow), `[test]` for
+   pytest, `[lint]` for ruff
+   ```sh
+   pip install -e "open-quantum-computer-vision[image,test,lint]"
+   ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Usage
 
 ```python
 import numpy as np
-from open_quantum_cv import MHRQI, QARQI
+import openqcv as qcv
 
-# Load an image
-image = np.random.randint(0, 256, (16, 16), dtype=np.uint8)
+image = np.array([[0, 64], [128, 255]], dtype=np.uint8)
 
-# Use MHRQI (Computational Basis Encoding)
-mhrqi = MHRQI(depth=4)
-mhrqi.encode(image)
-result = mhrqi.simulate(shots=1000)
-reconstructed = result.reconstructed_image
+program = qcv.encode(image, "frqi")                     # "qpie", "frqi" or "neqr"
+result = qcv.run(program, "simulator", shots=8192)      # or "statevector" (exact)
+decoded = qcv.decode(result, program)
 
-# Use QARQI (Amplitude Encoding)
-qarqi = QARQI(d=4)
-qarqi.encode(image)
-result = qarqi.simulate(shots=1000)
-reconstructed = result.reconstructed_image
-
-# Compute metrics
-metrics = result.compute_metrics(image)
-print(f"MSE: {metrics['mse']:.4f}, SSIM: {metrics['ssim']:.4f}")
+print(program.qasm())                                   # OpenQASM 3; program.qasm(2) for 2
+qcv.draw(program).save("frqi.png")                      # circuit figure
+qcv.compare(image, decoded).save("compare.png")         # original / decoded / difference
 ```
 
-## Architecture
+Programs serialise to JSON and decode without the encoding options:
 
-```
-open_quantum_cv/
-├── representations/     # Quantum image representations
-│   ├── base.py         # Common interface
-│   ├── mhrqi.py        # MHRQI implementation
-│   └── qarqi.py        # QARQI implementation
-├── processing/         # Quantum image processing
-│   └── denoising.py    # Hierarchical denoising
-├── utils/             # Utilities
-│   ├── general.py     # Core utilities
-│   ├── metrics.py     # Quality metrics
-│   └── visualization.py # Plotting functions
-├── benchmarks/        # Benchmarking tools
-├── examples/          # Usage examples
-└── tests/            # Unit tests
+```python
+received = qcv.QasmProgram.from_json(program.to_json())
+decoded = qcv.decode(qcv.run(received), received)
 ```
 
-## Dependencies
+| Representation | Qubits for *N* pixels | Circuit |
+|---|---|---|
+| `qpie` | ⌈log₂N⌉ | Grover–Rudolph R<sub>y</sub> tree |
+| `frqi` | ⌈log₂N⌉ + 1 | one controlled R<sub>y</sub>(2θ<sub>i</sub>) per pixel |
+| `neqr` | ⌈log₂N⌉ + bit depth | one controlled NOT per set intensity bit |
 
-- **Quantum Computing**: Qiskit, Qiskit-Aer, MQT Qudits
-- **Image Processing**: OpenCV, scikit-image
-- **Metrics**: PIQ, PyPIQE, BRISQUE, scikit-video
-- **General**: NumPy, SciPy, Matplotlib, PyTorch
+Conventions: bitstrings are in qubit order (character `j` is qubit `j`);
+the first qubit of a register is its least significant bit; pixels are
+row-major.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Roadmap
+
+- [x] QPIE, FRQI, NEQR
+- [x] OpenQASM 2/3 export and textbook logical QASM
+- [x] Exact and sampled local backends
+- [x] Circuit and image figures
+- [ ] Hardware backends
+- [ ] More representations
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Contributing
 
-Contributions are welcome! Please see our contributing guidelines.
+Read [AGENTS.md](AGENTS.md) first. Then:
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Check it (`ruff format --check .`, `ruff check .`, `pytest`)
+4. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the Branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## License
 
-Apache 2.0
+No license has been chosen yet.
 
-## Citation
-
-If you use this library in your research, please cite the original papers:
-
-- **MHRQI**: Jose, K.S. et al. (2023). Multi-scale Hierarchical Representation of Quantum Images.
-- **QARQI**: Jose, K.S. (2023). Quadrant Amplitude Representation of Quantum Images.
-- **FRQI**: Le, P.Q., Dong, F. & Hirota, K. A flexible representation of quantum images for polynomial preparation, image compression, and processing operations. Quantum Inf Process 10, 63–84 (2011). <https://doi.org/10.1007/s11128-010-0177-y>
-- **NEQR**: Zhang, Y., Lu, K., Gao, Y. et al. NEQR: a novel enhanced quantum representation of digital images. Quantum Inf Process 12, 2833–2860 (2013). <https://doi.org/10.1007/s11128-013-0567-z>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Acknowledgments
 
-This library unifies and builds upon:
+* Yao et al., *Quantum image processing and its application to edge detection* (QPIE), Phys. Rev. X 7, 031041 (2017)
+* Le, Dong & Hirota, *A flexible representation of quantum images* (FRQI), Quantum Inf. Process. 10, 63 (2011)
+* Zhang et al., *NEQR: a novel enhanced quantum representation of digital images*, Quantum Inf. Process. 12, 2833 (2013)
+* Grover & Rudolph, *Creating superpositions that correspond to efficiently integrable probability distributions*, arXiv:quant-ph/0208112
+* [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
 
-- [MHRQI](https://github.com/Keno-00/MHRQI) by Keno S. Jose
-- [QARQI](https://github.com/Keno-00/QARQI) by Keno S. Jose
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- MARKDOWN LINKS & IMAGES -->
+[Python-badge]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+[Python-url]: https://www.python.org/
+[Qiskit-badge]: https://img.shields.io/badge/Qiskit-6929C4?style=for-the-badge&logo=qiskit&logoColor=white
+[Qiskit-url]: https://www.ibm.com/quantum/qiskit
+[NumPy-badge]: https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white
+[NumPy-url]: https://numpy.org/
+[Matplotlib-badge]: https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logoColor=white
+[Matplotlib-url]: https://matplotlib.org/
