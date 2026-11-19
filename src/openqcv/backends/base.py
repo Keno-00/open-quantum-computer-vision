@@ -19,7 +19,8 @@ class Backend(ABC):
     Rules:
         * Read the circuit from ``program.qasm2`` or ``program.qasm3`` only,
           never from representation objects.
-        * Return bitstrings in qubit order (character ``j`` = qubit ``j``).
+        * Return bitstrings in qubit order, as defined in
+          :mod:`openqcv.core.program`.
     """
 
     name: ClassVar[str]

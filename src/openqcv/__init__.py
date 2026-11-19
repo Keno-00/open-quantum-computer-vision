@@ -1,14 +1,12 @@
-"""openqcv: quantum computer vision.
+"""openqcv: quantum image representations.
 
-Typical use::
+The public workflow is :func:`encode`, :func:`run` and :func:`decode`;
+:func:`draw`, :func:`draw_image` and :func:`compare` make figures.
+Circuits are built, lowered and simulated with Qiskit.
 
-    import openqcv as qcv
-
-    program = qcv.encode(image, "frqi")      # image -> QASM + metadata
-    result = qcv.run(program, "simulator")   # run on any backend
-    decoded = qcv.decode(result, program)    # result -> image
-
-    qcv.draw(program).save("frqi.png")       # pretty circuit
+References:
+    A. Javadi-Abhari et al., "Quantum computing with Qiskit" (2024).
+    arXiv:2405.08810
 """
 
 from openqcv.core.program import ExecutionResult, QasmProgram

@@ -37,6 +37,15 @@ class QPIE(Representation):
 
     The norm ``||x||`` is not in the quantum state, so it travels in
     ``meta`` and decoding multiplies it back.
+
+    References:
+        X.-W. Yao et al., "Quantum Image Processing and Its Application to
+        Edge Detection: Theory and Experiment", Phys. Rev. X 7, 031041
+        (2017). doi:10.1103/PhysRevX.7.031041
+
+        L. Grover and T. Rudolph, "Creating superpositions that correspond
+        to efficiently integrable probability distributions" (2002).
+        arXiv:quant-ph/0208112
     """
 
     name = "qpie"

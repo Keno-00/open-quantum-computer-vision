@@ -1,4 +1,4 @@
-"""Novel Enhanced Quantum Representation (NEQR), Zhang et al. 2013."""
+"""Novel Enhanced Quantum Representation (NEQR)."""
 
 from __future__ import annotations
 
@@ -35,6 +35,11 @@ class NEQR(Representation):
     Args:
         bit_depth: Bits per intensity. Values must be integers in
             ``[0, 2**bit_depth)``; the default fits ``uint8`` images.
+
+    References:
+        Y. Zhang, K. Lu, Y. Gao and M. Wang, "NEQR: a novel enhanced
+        quantum representation of digital images", Quantum Inf. Process.
+        12, 2833-2860 (2013). doi:10.1007/s11128-013-0567-z
     """
 
     name = "neqr"

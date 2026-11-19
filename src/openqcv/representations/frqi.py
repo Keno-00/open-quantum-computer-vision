@@ -1,4 +1,4 @@
-"""Flexible Representation of Quantum Images (FRQI), Le et al. 2011."""
+"""Flexible Representation of Quantum Images (FRQI)."""
 
 from __future__ import annotations
 
@@ -37,6 +37,12 @@ class FRQI(Representation):
     Args:
         value_range: ``(low, high)`` intensities mapped to angles ``0`` and
             ``pi/2``. Defaults to the image's own minimum and maximum.
+
+    References:
+        P. Q. Le, F. Dong and K. Hirota, "A flexible representation of
+        quantum images for polynomial preparation, image compression, and
+        processing operations", Quantum Inf. Process. 10, 63-84 (2011).
+        doi:10.1007/s11128-010-0177-y
     """
 
     name = "frqi"

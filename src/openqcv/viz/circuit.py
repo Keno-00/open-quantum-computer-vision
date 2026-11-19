@@ -10,6 +10,9 @@ from JSON or a hand-written logical QASM string, can be drawn.
 
 Coordinates are in *lane units*: lane ``k`` is the horizontal line
 ``y = -k``, and one unit is :data:`INCH_PER_UNIT` inches.
+
+References:
+    A. Kay, "Tutorial on the Quantikz Package" (2018). arXiv:1809.03842
 """
 
 from __future__ import annotations

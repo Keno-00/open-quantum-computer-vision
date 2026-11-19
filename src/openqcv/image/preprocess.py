@@ -14,12 +14,18 @@ def as_grayscale(image: ArrayLike) -> np.ndarray:
 
     2-D arrays are used as-is. ``(H, W, 1)`` arrays are squeezed and
     ``(H, W, 3|4)`` RGB(A) arrays are converted with ITU-R BT.601 luma
-    weights (alpha is ignored).
+    weights (alpha is ignored). Pixels are indexed row-major:
+    pixel ``i`` is ``(i // width, i % width)``.
 
     Raises:
         TypeError: If the values are not real numbers.
         ValueError: If the image is empty, not finite, or has an
             unsupported shape.
+
+    References:
+        Recommendation ITU-R BT.601-7, "Studio encoding parameters of
+        digital television for standard 4:3 and wide-screen 16:9 aspect
+        ratios" (2011).
     """
     values = np.asarray(image)
     if values.size == 0:
