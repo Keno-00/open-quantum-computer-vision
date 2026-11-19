@@ -68,7 +68,7 @@ def load_circuit(program: QasmProgram) -> QuantumCircuit:
 
 
 def _jsonable(value: Any) -> Any:
-    """Convert tuples and NumPy scalars/arrays so ``meta`` survives JSON."""
+    """Convert tuples and NumPy values so ``meta`` survives JSON."""
     if isinstance(value, dict):
         return {str(k): _jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):

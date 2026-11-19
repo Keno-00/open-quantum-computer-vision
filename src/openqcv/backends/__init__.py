@@ -1,4 +1,4 @@
-"""Backends that run QasmPrograms."""
+"""Backends that run a :class:`~openqcv.core.program.QasmProgram`."""
 
 from openqcv.backends.base import BACKENDS, Backend, register_backend
 from openqcv.backends.simulator import SimulatorBackend

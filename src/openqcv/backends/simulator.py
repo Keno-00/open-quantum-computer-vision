@@ -1,4 +1,4 @@
-"""Shot-based local simulation: behaves like noiseless hardware."""
+"""Shot-based local simulation of noiseless hardware."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from openqcv.export.qasm import MEASUREMENT_REGISTER, load_circuit
 
 @register_backend
 class SimulatorBackend(Backend):
-    """Samples measurement outcomes, so results carry shot noise.
+    """Simulation by sampling, so results carry shot noise.
 
     Args:
         seed: Fix the random seed for reproducible results.

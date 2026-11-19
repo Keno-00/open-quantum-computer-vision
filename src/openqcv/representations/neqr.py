@@ -24,17 +24,38 @@ from openqcv.representations.base import (
 
 @register_representation
 class NEQR(Representation):
-    """Each pixel's intensity is stored as a binary number in basis states.
+    r"""Novel enhanced quantum representation: intensities as bit strings.
 
-    ``|I> = 1/sqrt(2^n) sum_i |f(i)>_intensity |i>_position`` on
-    ``n + bit_depth`` qubits. After Hadamards on the position register, every
-    set bit of ``f(i)`` is one controlled-NOT, controlled on ``position == i``.
-    Because intensities are basis states, a single observation of a position
-    recovers its value exactly; a pixel that was never observed decodes to 0.
+    Each intensity is an integer :math:`f(i) \in \{0, \dots, 2^q - 1\}`
+    with binary digits :math:`f(i) = \sum_{b=0}^{q-1} f_b(i) \, 2^b`, where
+    :math:`q` is ``bit_depth``. The image is encoded on :math:`n + q` qubits
+    as
+
+    .. math::
+
+        |I\rangle = \frac{1}{2^{n/2}} \sum_{i=0}^{2^n - 1}
+            |f(i)\rangle_{\mathrm{intensity}} \otimes
+            |i\rangle_{\mathrm{position}},
+
+    where :math:`f(i) = 0` for the padding positions :math:`i \ge N`.
+
+    Hadamard gates on the position register create the uniform
+    superposition. For every pixel :math:`i` and every bit with
+    :math:`f_b(i) = 1`, a NOT gate on ``intensity[b]`` is controlled on the
+    position register holding :math:`i`, with open controls for the zero
+    bits of :math:`i`. Pixels with :math:`f(i) = 0` require no gates.
+
+    Every outcome :math:`(i, v)` with non-zero probability has
+    :math:`v = f(i)`, so a single observation of position :math:`i`
+    recovers its intensity exactly; the decoder takes the most frequent
+    value at each position. With :math:`S` shots, a given position is never
+    observed with probability :math:`(1 - 2^{-n})^S`, in which case its
+    pixel decodes to 0.
 
     Args:
-        bit_depth: Bits per intensity. Values must be integers in
-            ``[0, 2**bit_depth)``; the default fits ``uint8`` images.
+        bit_depth: The number of bits :math:`q` per intensity. Intensities
+            must be integers in :math:`[0, 2^q)`; the default, 8, fits
+            ``uint8`` images.
 
     References:
         Y. Zhang, K. Lu, Y. Gao and M. Wang, "NEQR: a novel enhanced
@@ -50,7 +71,7 @@ class NEQR(Representation):
         self.bit_depth = bit_depth
 
     def qubits_required(self, shape: tuple[int, ...]) -> int:
-        """``ceil(log2 N)`` position qubits plus ``bit_depth`` qubits."""
+        """Return ``ceil(log2 N) + bit_depth``."""
         return position_qubits(prod(shape[:2])) + self.bit_depth
 
     def encode(self, image: ArrayLike) -> EncodedImage:
@@ -94,7 +115,7 @@ class NEQR(Representation):
     def decode(
         cls, result: ExecutionResult, program: QasmProgram
     ) -> np.ndarray:
-        """The most likely intensity observed at each position."""
+        """Decode the intensities as described in the class docstring."""
         shape, count = image_shape(program)
         image = np.zeros(count)
         best = np.zeros(count)

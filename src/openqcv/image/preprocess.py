@@ -44,7 +44,7 @@ def as_grayscale(image: ArrayLike) -> np.ndarray:
     elif values.ndim == 3 and values.shape[2] in (3, 4):
         gray = values[..., :3].astype(np.float64) @ _LUMA
     elif values.ndim == 3:
-        raise ValueError("Colour images must have 1, 3 or 4 channels")
+        raise ValueError("Color images must have 1, 3 or 4 channels")
     else:
         raise ValueError(
             f"Image must be a 2-D or 3-D array, got {values.ndim}-D"

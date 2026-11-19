@@ -27,7 +27,7 @@ class EncodedImage:
             register's name is its role (``"position"``, ``"color"``, ...),
             it is built from standard (controlled) gates, and high-level steps
             are wrapped in :class:`~openqcv.core.Block` gates.
-        meta: JSON-serialisable classical information needed to decode.
+        meta: JSON-serializable classical information needed to decode.
     """
 
     representation: str
@@ -58,7 +58,7 @@ class Representation(ABC):
 
     @abstractmethod
     def qubits_required(self, shape: tuple[int, ...]) -> int:
-        """Number of qubits needed to encode an image of ``shape``."""
+        """Return the number of qubits needed for an image of ``shape``."""
 
     @abstractmethod
     def encode(self, image: ArrayLike) -> EncodedImage:
@@ -108,7 +108,7 @@ def controlled(
 def marginal(
     result: ExecutionResult, program: QasmProgram, *roles: str
 ) -> dict[tuple[int, ...], float]:
-    """Probability of each joint value of the registers ``roles``.
+    """Return the probability of each joint value of ``roles``.
 
     Example: ``marginal(result, program, "position", "color")`` maps
     ``(pixel_index, color_bit)`` to its probability.
@@ -120,6 +120,6 @@ def marginal(
 
 
 def image_shape(program: QasmProgram) -> tuple[tuple[int, ...], int]:
-    """The original image shape from ``program.meta`` and its pixel count."""
+    """Return the original image shape and its pixel count."""
     shape = tuple(int(s) for s in program.meta["shape"])
     return shape, int(np.prod(shape))

@@ -27,6 +27,6 @@ Your output is held to the same standard as the maintainer's.
   just wrote, no sentence that tells the reader nothing new.
 - Do not assign importance. Emphasis, ordering and length must follow from
   what is actually at stake, and you must be able to justify each.
-- Do not state a fact you have not checked. Verify code behaviour by running
+- Do not state a fact you have not checked. Verify code behavior by running
   it, figures by looking at them, and citations against their publisher
   record.

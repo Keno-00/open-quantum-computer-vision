@@ -24,10 +24,10 @@ def draw_image(
     title: str | None = None,
     value_range: tuple[float, float] | None = None,
 ) -> Drawing:
-    """Draw a grayscale image with pixel-index axes and a colour bar.
+    """Draw a grayscale image with pixel-index axes and a color bar.
 
     Args:
-        image: 2-D grayscale or ``(H, W, 3|4)`` colour array.
+        image: 2-D grayscale or ``(H, W, 3|4)`` color array.
         title: Optional caption above the image.
         value_range: Intensities shown as black and white. Defaults to the
             image's minimum and maximum.
@@ -43,9 +43,9 @@ def draw_image(
 
 
 def compare(original: ArrayLike, decoded: ArrayLike) -> Drawing:
-    """(a) original, (b) decoded and (c) their absolute difference.
+    """Draw (a) the original, (b) the decoded image and (c) their difference.
 
-    (a) and (b) share the original's grey scale, so differences are real;
+    (a) and (b) share the original's gray scale, so differences are real;
     (c) has its own scale, white = 0. The footer gives the maximum and mean
     absolute error and the PSNR, with the original's peak absolute value as
     the signal maximum.
@@ -95,7 +95,7 @@ def _panel(
     *,
     low_is_dark: bool,
 ) -> None:
-    """One panel: pixels, index ticks, colour bar and, if small, values."""
+    """Draw one panel: pixels, ticks, color bar and, if small, values."""
     rows, cols = pixels.shape
     shown = ax.imshow(
         pixels,
@@ -138,7 +138,7 @@ def _range(pixels: np.ndarray) -> tuple[float, float]:
 
 
 def _psnr(original: np.ndarray, decoded: np.ndarray) -> str:
-    r"""PSNR in dB as mathtext; ``\infty`` if the images are identical."""
+    r"""Return the PSNR in dB as mathtext; ``\infty`` if identical."""
     mse = float(np.mean((original - decoded) ** 2))
     peak = float(np.abs(original).max()) or 1.0
     return r"\infty" if mse == 0 else f"{10 * np.log10(peak**2 / mse):.2f}"

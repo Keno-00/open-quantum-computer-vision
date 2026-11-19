@@ -1,4 +1,4 @@
-"""The user-facing workflow: encode -> run -> decode."""
+"""The public workflow: encode, run and decode."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def encode(
     """Encode an image into a :class:`QasmProgram`.
 
     Args:
-        image: 2-D grayscale or ``(H, W, 3|4)`` colour array.
+        image: 2-D grayscale or ``(H, W, 3|4)`` color array.
         representation: A name from :func:`list_representations`, a class or
             an instance.
         **options: Passed to the representation, e.g. ``bit_depth=4`` for NEQR.
@@ -65,10 +65,10 @@ def decode(result: ExecutionResult, program: QasmProgram) -> np.ndarray:
 
 
 def list_representations() -> list[str]:
-    """Names accepted by :func:`encode`."""
+    """Return the names accepted by :func:`encode`."""
     return REPRESENTATIONS.names()
 
 
 def list_backends() -> list[str]:
-    """Names accepted by :func:`run`."""
+    """Return the names accepted by :func:`run`."""
     return BACKENDS.names()

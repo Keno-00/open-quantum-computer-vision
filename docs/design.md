@@ -15,7 +15,8 @@ src/openqcv/
 ├── viz/               circuit.py, image.py, drawing.py (PAPER_STYLE)
 └── pipeline.py        encode, run, decode
 tests/                 test_roundtrip.py, test_logical.py, test_core.py
-docs/                  design.md, make_figures.py, images/
+docs/                  design.md, Sphinx sources (conf.py, *.rst),
+                       make_figures.py, images/
 ```
 
 ## Architecture invariants
@@ -82,7 +83,19 @@ drift out of date or carry a concept into a document it does not belong to.
 | Architecture, invariants, these rules | `docs/design.md` |
 | How AI agents must work in this repository | `AGENTS.md` |
 | What a module, class or function does, its conventions | its docstring |
+| The mathematics of an algorithm | the docstring of the code that implements it |
 | The paper or standard behind an implementation | `References:` in the docstring of the code that implements it |
+| Which docstrings appear on which reference page | `docs/*.rst` (structure only, no prose that a docstring could hold) |
+
+The reference documentation is generated from the docstrings by Sphinx,
+so a docstring is both the `help()` text and the published page.
+
+- Mathematics is written in LaTeX with `:math:` and `.. math::`, in raw
+  docstrings (`r"""`). An algorithm's docstring states the encoded state,
+  why the circuit prepares it, and how it is decoded, with every symbol
+  defined.
+- English is American (matching identifiers such as `color`), grammatical
+  and in a formal technical register. One concept has one name throughout.
 
 Weight is earned, not assigned:
 

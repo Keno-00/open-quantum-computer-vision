@@ -102,15 +102,17 @@ qcv.draw(program).save("frqi.png")
 qcv.compare(image, decoded).save("compare.png")
 ```
 
-Programs serialise to JSON and decode without the encoding options:
+Programs serialize to JSON and decode without the encoding options:
 
 ```python
 received = qcv.QasmProgram.from_json(program.to_json())
 decoded = qcv.decode(qcv.run(received), received)
 ```
 
-Each representation's docstring gives its state, circuit, qubit count and
-references, e.g. `help(qcv.representations.FRQI)`.
+The reference documentation, including the mathematics and the references
+of each representation, is generated from the docstrings; see
+[CONTRIBUTING.md](CONTRIBUTING.md#checks) to build it. The same text is
+available through `help()`, e.g. `help(qcv.representations.FRQI)`.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

@@ -1,4 +1,4 @@
-"""A name -> class registry, used for representations and backends."""
+"""A registry of classes by name, for representations and backends."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ T = TypeVar("T")
 
 
 class Registry(Generic[T]):
-    """Maps short names such as ``"qpie"`` to subclasses of ``base``.
+    """A mapping from short names such as ``"qpie"`` to subclasses of ``base``.
 
     This is what lets users pick a representation or backend with a plain
     string, while still accepting a class or a configured instance.
@@ -24,7 +24,7 @@ class Registry(Generic[T]):
         self._classes: dict[str, type[T]] = {}
 
     def register(self, cls: type[T]) -> type[T]:
-        """Class decorator: register ``cls`` under its ``name`` attribute."""
+        """Register ``cls`` under its ``name`` attribute; a class decorator."""
         if not (isinstance(cls, type) and issubclass(cls, self.base)):
             raise TypeError(
                 f"Only subclasses of {self.base.__name__} can be registered"
@@ -43,11 +43,11 @@ class Registry(Generic[T]):
         return cls
 
     def names(self) -> list[str]:
-        """All registered names, sorted."""
+        """Return all registered names, sorted."""
         return sorted(self._classes)
 
     def get(self, name: str) -> type[T]:
-        """The class registered under ``name`` (case-insensitive)."""
+        """Return the class registered under ``name``, ignoring case."""
         try:
             return self._classes[name.lower()]
         except KeyError:
@@ -57,7 +57,7 @@ class Registry(Generic[T]):
             ) from None
 
     def create(self, spec: str | type[T] | T, **options: Any) -> T:
-        """An instance from a name or class plus options, or ``spec`` itself.
+        """Return an instance for ``spec``, created with ``options`` if needed.
 
         Raises:
             TypeError: If ``spec`` is an instance and options are given, or
