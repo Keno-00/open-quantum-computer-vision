@@ -86,3 +86,10 @@ def test_rgb_image_is_converted_to_grayscale():
     rgb[..., 0] = 100  # pure red -> 0.299 * 100
     decoded = roundtrip(rgb, "qpie")
     np.testing.assert_allclose(decoded, np.full((2, 2), 29.9), atol=1e-6)
+
+
+def test_gray_rgb_image_is_integer_for_neqr():
+    # The luma of (v, v, v) is not exactly v for these values.
+    gray = np.array([[1, 2], [13, 255]], dtype=np.uint8)
+    rgb = np.repeat(gray[..., None], 3, axis=2)
+    np.testing.assert_array_equal(roundtrip(rgb, "neqr"), gray)

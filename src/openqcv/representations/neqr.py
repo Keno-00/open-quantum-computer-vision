@@ -21,6 +21,14 @@ from openqcv.representations.base import (
     register_representation,
 )
 
+_INTEGER_SPACINGS = 1
+"""Distance from an integer, in float64 spacings, still read as that integer.
+
+``as_grayscale`` converts a gray RGB pixel ``(v, v, v)`` with luma weights
+that sum to 1 only up to rounding; the result is at most one spacing from
+``v`` (measured for every integer ``v`` below ``2**24``).
+"""
+
 
 @register_representation
 class NEQR(Representation):
@@ -57,6 +65,10 @@ class NEQR(Representation):
             must be integers in :math:`[0, 2^q)`; the default, 8, fits
             ``uint8`` images.
 
+    Raises:
+        TypeError: If ``bit_depth`` is not an ``int`` (``bool`` included).
+        ValueError: If ``bit_depth`` is less than 1.
+
     References:
         Y. Zhang, K. Lu, Y. Gao and M. Wang, "NEQR: a novel enhanced
         quantum representation of digital images", Quantum Inf. Process.
@@ -66,7 +78,12 @@ class NEQR(Representation):
     name = "neqr"
 
     def __init__(self, bit_depth: int = 8) -> None:
-        if not isinstance(bit_depth, int) or bit_depth < 1:
+        # bool is a subclass of int, but NEQR(True) is never meant.
+        if not isinstance(bit_depth, int) or isinstance(bit_depth, bool):
+            raise TypeError(
+                f"bit_depth must be an int, got {type(bit_depth).__name__}"
+            )
+        if bit_depth < 1:
             raise ValueError("bit_depth must be a positive integer")
         self.bit_depth = bit_depth
 
@@ -84,7 +101,8 @@ class NEQR(Representation):
         pixels = as_grayscale(image)
         values = np.rint(pixels)
         top = (1 << self.bit_depth) - 1
-        if not np.allclose(values, pixels):
+        tolerance = _INTEGER_SPACINGS * np.abs(np.spacing(values))
+        if (np.abs(pixels - values) > tolerance).any():
             raise ValueError(
                 "NEQR needs integer intensities; round or scale the image "
                 "first, e.g. (image * 255).round()"

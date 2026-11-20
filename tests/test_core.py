@@ -124,8 +124,16 @@ def test_representation_input_validation():
         qcv.encode(IMAGE / 2.5, "neqr")
     with pytest.raises(ValueError, match="0..15"):
         qcv.encode(IMAGE, "neqr", bit_depth=4)
+    with pytest.raises(ValueError, match="integer intensities"):
+        qcv.encode(np.array([[255.002, 0], [1, 2]]), "neqr")
+    with pytest.raises(ValueError, match="0..255"):
+        qcv.encode(-IMAGE.astype(int), "neqr")
     with pytest.raises(ValueError, match="bit_depth"):
         NEQR(bit_depth=0)
+    with pytest.raises(TypeError, match="bit_depth must be an int, got bool"):
+        NEQR(bit_depth=True)
+    with pytest.raises(TypeError, match="bit_depth must be an int, got str"):
+        NEQR(bit_depth="8")
     with pytest.raises(ValueError, match="low < high"):
         FRQI(value_range=(5, 5))
     with pytest.raises(ValueError, match="outside value_range"):
