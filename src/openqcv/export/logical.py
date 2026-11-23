@@ -4,7 +4,7 @@ The logical QASM keeps what a paper figure would show:
 
 * named registers (``qubit[2] position;``),
 * one ``gate`` definition per :class:`~openqcv.core.Block`, which a drawing
-  frames as a labelled group,
+  frames as a labeled group,
 * controlled gates as OpenQASM 3 modifiers, including open controls::
 
       negctrl @ ctrl @ ry(0.927) position[0], position[1], color[0];
@@ -258,7 +258,7 @@ def parse(text: str) -> LogicalCircuit:
 
 
 def _statements(text: str) -> Iterator[str]:
-    """Non-empty, whitespace-normalised statements."""
+    """Yield the non-empty statements with whitespace normalized."""
     for statement in text.split(";"):
         statement = " ".join(statement.split())
         if statement:
@@ -266,7 +266,7 @@ def _statements(text: str) -> Iterator[str]:
 
 
 def _declare(table: dict[str, int], name: str, size: int) -> None:
-    """Give the next ``size`` indices to ``name[0]`` .. ``name[size-1]``."""
+    """Assign the next ``size`` indices to ``name[0]`` to ``name[size-1]``."""
     first = len(table)
     table.update({f"{name}[{i}]": first + i for i in range(size)})
 

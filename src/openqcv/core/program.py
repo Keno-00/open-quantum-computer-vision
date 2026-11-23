@@ -1,10 +1,17 @@
-"""The two data types every part of openqcv passes around.
+r"""The data types exchanged by every part of openqcv.
 
 Bitstring convention
 --------------------
-Every bitstring in openqcv is written in *qubit order*: character ``j`` is the
-value of qubit ``j``. (Qiskit prints the reverse; backend adapters convert.)
-Inside a register the first qubit is the least significant bit, so
+Every bitstring in openqcv is written in *qubit order*: character
+:math:`j` is the value :math:`b_j` of qubit :math:`j`. Qiskit prints the
+reverse; backends convert. A register whose qubits are
+:math:`r_0, r_1, \dots, r_{m-1}` holds the integer
+
+.. math::
+
+    v = \sum_{k=0}^{m-1} b_{r_k} \, 2^k,
+
+so its first qubit is the least significant bit, and
 ``program.value(bits, "position")`` is the pixel index.
 """
 
@@ -51,7 +58,7 @@ class QasmProgram:
         return sum(len(qubits) for qubits in self.registers.values())
 
     def qasm(self, version: Literal[2, 3] = 3) -> str:
-        """The lowered circuit as OpenQASM ``version`` (2 or 3)."""
+        """Return the lowered circuit as OpenQASM ``version`` (2 or 3)."""
         if version == 2:
             return self.qasm2
         if version == 3:
@@ -59,7 +66,7 @@ class QasmProgram:
         raise ValueError("version must be 2 or 3")
 
     def value(self, bits: str, role: str) -> int:
-        """The integer held by register ``role`` in a qubit-order bitstring."""
+        """Return the integer held by register ``role`` in ``bits``."""
         return sum(
             1 << k
             for k, qubit in enumerate(self.registers[role])
@@ -67,7 +74,7 @@ class QasmProgram:
         )
 
     def to_json(self, indent: int | None = None) -> str:
-        """Serialise to JSON; :meth:`from_json` restores an equal program."""
+        """Serialize the program; :meth:`from_json` restores it."""
         return json.dumps(asdict(self), indent=indent)
 
     @classmethod

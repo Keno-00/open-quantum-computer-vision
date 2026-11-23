@@ -45,13 +45,11 @@ textbook-style figures.
 
 ### Goals
 
-1. Correct first: every representation round-trips exactly in the tests.
-2. Nothing hidden: all data needed to decode is in the program, in the open.
-3. Textbook circuits: standard gates only, drawn as they would be in a paper.
-4. Backend independence: representations and backends share only OpenQASM.
+1. Correct: results are verified, never assumed.
+2. Transparent: everything needed to decode is in the program, in the open.
+3. Textbook circuits: circuits read and draw as they would in a paper.
+4. Backend independent: OpenQASM is the only interface to a backend.
 5. Nothing speculative: features are added when specified, not in advance.
-
-Design rules for contributors are in [AGENTS.md](AGENTS.md).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -80,10 +78,9 @@ Design rules for contributors are in [AGENTS.md](AGENTS.md).
    ```sh
    pip install -e open-quantum-computer-vision
    ```
-3. Optional extras: `[image]` for `load_image` (Pillow), `[test]` for
-   pytest, `[lint]` for ruff
+3. Optional: Pillow, for `qcv.load_image`
    ```sh
-   pip install -e "open-quantum-computer-vision[image,test,lint]"
+   pip install -e "open-quantum-computer-vision[image]"
    ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -96,31 +93,27 @@ import openqcv as qcv
 
 image = np.array([[0, 64], [128, 255]], dtype=np.uint8)
 
-program = qcv.encode(image, "frqi")                     # "qpie", "frqi" or "neqr"
-result = qcv.run(program, "simulator", shots=8192)      # or "statevector" (exact)
+program = qcv.encode(image, "frqi")  # or "qpie", "neqr"
+result = qcv.run(program, "simulator", shots=8192)  # or "statevector"
 decoded = qcv.decode(result, program)
 
-print(program.qasm())                                   # OpenQASM 3; program.qasm(2) for 2
-qcv.draw(program).save("frqi.png")                      # circuit figure
-qcv.compare(image, decoded).save("compare.png")         # original / decoded / difference
+print(program.qasm())  # OpenQASM 3; program.qasm(2) for OpenQASM 2
+qcv.draw(program).save("frqi.png")
+qcv.compare(image, decoded).save("compare.png")
 ```
 
-Programs serialise to JSON and decode without the encoding options:
+Programs serialize to JSON and decode without the encoding options:
 
 ```python
 received = qcv.QasmProgram.from_json(program.to_json())
 decoded = qcv.decode(qcv.run(received), received)
 ```
 
-| Representation | Qubits for *N* pixels | Circuit |
-|---|---|---|
-| `qpie` | ⌈log₂N⌉ | Grover–Rudolph R<sub>y</sub> tree |
-| `frqi` | ⌈log₂N⌉ + 1 | one controlled R<sub>y</sub>(2θ<sub>i</sub>) per pixel |
-| `neqr` | ⌈log₂N⌉ + bit depth | one controlled NOT per set intensity bit |
-
-Conventions: bitstrings are in qubit order (character `j` is qubit `j`);
-the first qubit of a register is its least significant bit; pixels are
-row-major.
+The [reference documentation](https://openqcv.readthedocs.io/), including
+the mathematics and the references of each representation, is generated from
+the docstrings; see [CONTRIBUTING.md](CONTRIBUTING.md#checks) to build it
+locally. The same text is available through `help()`, e.g.
+`help(qcv.representations.FRQI)`.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -137,14 +130,8 @@ row-major.
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md) first. Then:
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Check it (`ruff format --check .`, `ruff check .`, `pytest`)
-4. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-5. Push to the Branch (`git push origin feature/AmazingFeature`)
-6. Open a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md). AI agents also follow
+[AGENTS.md](AGENTS.md).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -156,10 +143,9 @@ No license has been chosen yet.
 
 ## Acknowledgments
 
-* Yao et al., *Quantum image processing and its application to edge detection* (QPIE), Phys. Rev. X 7, 031041 (2017)
-* Le, Dong & Hirota, *A flexible representation of quantum images* (FRQI), Quantum Inf. Process. 10, 63 (2011)
-* Zhang et al., *NEQR: a novel enhanced quantum representation of digital images*, Quantum Inf. Process. 12, 2833 (2013)
-* Grover & Rudolph, *Creating superpositions that correspond to efficiently integrable probability distributions*, arXiv:quant-ph/0208112
+The papers and standards openqcv implements are cited in the docstrings of
+the code that implements them.
+
 * [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

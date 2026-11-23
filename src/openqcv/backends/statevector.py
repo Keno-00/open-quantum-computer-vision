@@ -13,7 +13,7 @@ _ZERO = 1e-12  # probabilities below this are treated as exactly zero
 
 @register_backend
 class StatevectorBackend(Backend):
-    """Computes the exact final state, so results have no shot noise."""
+    """Exact simulation of the final state, without shot noise."""
 
     name = "statevector"
 

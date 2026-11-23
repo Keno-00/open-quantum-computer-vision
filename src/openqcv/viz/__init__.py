@@ -1,4 +1,4 @@
-"""Visualisation: quantikz-style circuits and black-and-white image figures."""
+"""Visualization: quantikz-style circuits and black-and-white image figures."""
 
 from openqcv.viz.circuit import draw
 from openqcv.viz.drawing import PAPER_STYLE, Drawing

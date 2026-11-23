@@ -1,4 +1,4 @@
-"""Novel Enhanced Quantum Representation (NEQR), Zhang et al. 2013."""
+"""Novel Enhanced Quantum Representation (NEQR)."""
 
 from __future__ import annotations
 
@@ -11,42 +11,85 @@ from qiskit.circuit.library import XGate
 
 from openqcv.core.blocks import Block
 from openqcv.core.program import ExecutionResult, QasmProgram
-from openqcv.image.preprocess import as_grayscale, position_qubits
+from openqcv.image.preprocess import as_grayscale, index_qubits
 from openqcv.representations.base import (
+    QIR,
     EncodedImage,
-    Representation,
     controlled,
     image_shape,
     marginal,
-    register_representation,
+    register,
 )
 
+_INTEGER_SPACINGS = 1
+"""Distance from an integer, in float64 spacings, still read as that integer.
 
-@register_representation
-class NEQR(Representation):
-    """Each pixel's intensity is stored as a binary number in basis states.
+``as_grayscale`` converts a gray RGB pixel ``(v, v, v)`` with luma weights
+that sum to 1 only up to rounding; the result is at most one spacing from
+``v`` (measured for every integer ``v`` below ``2**24``).
+"""
 
-    ``|I> = 1/sqrt(2^n) sum_i |f(i)>_intensity |i>_position`` on
-    ``n + bit_depth`` qubits. After Hadamards on the position register, every
-    set bit of ``f(i)`` is one controlled-NOT, controlled on ``position == i``.
-    Because intensities are basis states, a single observation of a position
-    recovers its value exactly; a pixel that was never observed decodes to 0.
+
+@register
+class NEQR(QIR):
+    r"""Novel enhanced quantum representation: intensities as bit strings.
+
+    Each intensity is an integer :math:`f(i) \in \{0, \dots, 2^q - 1\}`
+    with binary digits :math:`f(i) = \sum_{b=0}^{q-1} f_b(i) \, 2^b`, where
+    :math:`q` is ``bit_depth``. The image is encoded on :math:`n + q` qubits
+    as
+
+    .. math::
+
+        |I\rangle = \frac{1}{2^{n/2}} \sum_{i=0}^{2^n - 1}
+            |f(i)\rangle_{\mathrm{intensity}} \otimes
+            |i\rangle_{\mathrm{position}},
+
+    where :math:`f(i) = 0` for the padding positions :math:`i \ge N`.
+
+    Hadamard gates on the position register create the uniform
+    superposition. For every pixel :math:`i` and every bit with
+    :math:`f_b(i) = 1`, a NOT gate on ``intensity[b]`` is controlled on the
+    position register holding :math:`i`, with open controls for the zero
+    bits of :math:`i`. Pixels with :math:`f(i) = 0` require no gates.
+
+    Every outcome :math:`(i, v)` with non-zero probability has
+    :math:`v = f(i)`, so a single observation of position :math:`i`
+    recovers its intensity exactly; the decoder takes the most frequent
+    value at each position. With :math:`S` shots, a given position is never
+    observed with probability :math:`(1 - 2^{-n})^S`, in which case its
+    pixel decodes to 0.
 
     Args:
-        bit_depth: Bits per intensity. Values must be integers in
-            ``[0, 2**bit_depth)``; the default fits ``uint8`` images.
+        bit_depth: The number of bits :math:`q` per intensity. Intensities
+            must be integers in :math:`[0, 2^q)`; the default, 8, fits
+            ``uint8`` images.
+
+    Raises:
+        TypeError: If ``bit_depth`` is not an ``int`` (``bool`` included).
+        ValueError: If ``bit_depth`` is less than 1.
+
+    References:
+        Y. Zhang, K. Lu, Y. Gao and M. Wang, "NEQR: a novel enhanced
+        quantum representation of digital images", Quantum Inf. Process.
+        12, 2833-2860 (2013). doi:10.1007/s11128-013-0567-z
     """
 
     name = "neqr"
 
     def __init__(self, bit_depth: int = 8) -> None:
-        if not isinstance(bit_depth, int) or bit_depth < 1:
+        # bool is a subclass of int, but NEQR(True) is never meant.
+        if not isinstance(bit_depth, int) or isinstance(bit_depth, bool):
+            raise TypeError(
+                f"bit_depth must be an int, got {type(bit_depth).__name__}"
+            )
+        if bit_depth < 1:
             raise ValueError("bit_depth must be a positive integer")
         self.bit_depth = bit_depth
 
     def qubits_required(self, shape: tuple[int, ...]) -> int:
-        """``ceil(log2 N)`` position qubits plus ``bit_depth`` qubits."""
-        return position_qubits(prod(shape[:2])) + self.bit_depth
+        """Return ``ceil(log2 N) + bit_depth``."""
+        return index_qubits(prod(shape[:2])) + self.bit_depth
 
     def encode(self, image: ArrayLike) -> EncodedImage:
         """Write each pixel's binary intensity under its position.
@@ -58,7 +101,8 @@ class NEQR(Representation):
         pixels = as_grayscale(image)
         values = np.rint(pixels)
         top = (1 << self.bit_depth) - 1
-        if not np.allclose(values, pixels):
+        tolerance = _INTEGER_SPACINGS * np.abs(np.spacing(values))
+        if (np.abs(pixels - values) > tolerance).any():
             raise ValueError(
                 "NEQR needs integer intensities; round or scale the image "
                 "first, e.g. (image * 255).round()"
@@ -69,7 +113,7 @@ class NEQR(Representation):
                 f"in 0..{top}"
             )
 
-        n, q = position_qubits(pixels.size), self.bit_depth
+        n, q = index_qubits(pixels.size), self.bit_depth
         position = QuantumRegister(n, "position")
         intensity = QuantumRegister(q, "intensity")
         circuit = QuantumCircuit(position, intensity, name=self.name)
@@ -82,14 +126,14 @@ class NEQR(Representation):
                 )
 
         return EncodedImage(
-            self.name, circuit, {"shape": list(pixels.shape), "bit_depth": q}
+            circuit, {"shape": list(pixels.shape), "bit_depth": q}
         )
 
     @classmethod
     def decode(
         cls, result: ExecutionResult, program: QasmProgram
     ) -> np.ndarray:
-        """The most likely intensity observed at each position."""
+        """Decode the intensities as described in the class docstring."""
         shape, count = image_shape(program)
         image = np.zeros(count)
         best = np.zeros(count)

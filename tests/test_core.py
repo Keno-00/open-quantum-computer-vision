@@ -5,7 +5,7 @@ import pytest
 
 import openqcv as qcv
 from openqcv.backends import BACKENDS, Backend, SimulatorBackend
-from openqcv.image import as_grayscale, position_qubits
+from openqcv.image import as_grayscale, index_qubits
 from openqcv.representations import FRQI, NEQR, QPIE, REPRESENTATIONS
 
 IMAGE = np.array([[0, 64], [128, 255]], dtype=np.uint8)
@@ -108,8 +108,8 @@ def test_as_grayscale_validation():
 @pytest.mark.parametrize(
     ("pixels", "qubits"), [(1, 1), (2, 1), (3, 2), (4, 2), (5, 3), (64, 6)]
 )
-def test_position_qubits(pixels, qubits):
-    assert position_qubits(pixels) == qubits
+def test_index_qubits(pixels, qubits):
+    assert index_qubits(pixels) == qubits
 
 
 # ------------------------------------------------------- representation input
@@ -124,8 +124,16 @@ def test_representation_input_validation():
         qcv.encode(IMAGE / 2.5, "neqr")
     with pytest.raises(ValueError, match="0..15"):
         qcv.encode(IMAGE, "neqr", bit_depth=4)
+    with pytest.raises(ValueError, match="integer intensities"):
+        qcv.encode(np.array([[255.002, 0], [1, 2]]), "neqr")
+    with pytest.raises(ValueError, match="0..255"):
+        qcv.encode(-IMAGE.astype(int), "neqr")
     with pytest.raises(ValueError, match="bit_depth"):
         NEQR(bit_depth=0)
+    with pytest.raises(TypeError, match="bit_depth must be an int, got bool"):
+        NEQR(bit_depth=True)
+    with pytest.raises(TypeError, match="bit_depth must be an int, got str"):
+        NEQR(bit_depth="8")
     with pytest.raises(ValueError, match="low < high"):
         FRQI(value_range=(5, 5))
     with pytest.raises(ValueError, match="outside value_range"):

@@ -10,6 +10,9 @@ from JSON or a hand-written logical QASM string, can be drawn.
 
 Coordinates are in *lane units*: lane ``k`` is the horizontal line
 ``y = -k``, and one unit is :data:`INCH_PER_UNIT` inches.
+
+References:
+    A. Kay, "Tutorial on the Quantikz Package" (2018). arXiv:1809.03842
 """
 
 from __future__ import annotations
@@ -109,7 +112,7 @@ class _Layout:
 
 
 def _span(op: LogicalOp, bit_lane: Mapping[int, int]) -> range:
-    """Lanes an op occupies, including a classical lane it depends on."""
+    """Return the lanes an op spans, including a classical lane it reads."""
     lanes = list(op.lanes)
     if op.condition is not None:
         lanes.append(bit_lane[op.condition[0]])
@@ -161,13 +164,13 @@ def _layout(circuit: LogicalCircuit) -> _Layout:
 
 
 def _width(text: str, size: float = FONT_SIZE) -> float:
-    """Rendered width of ``text`` (mathtext allowed) in lane units."""
+    """Return the rendered width of ``text`` in lane units."""
     points = TextPath((0, 0), text, size=size).get_extents().width
     return points / 72 / INCH_PER_UNIT
 
 
 def _angle(value: float) -> str:
-    """``π/2``-style text when the angle is a simple multiple of π."""
+    """Format an angle, as a multiple of π when it is a simple one."""
     ratio = Fraction(value / math.pi).limit_denominator(16)
     if ratio and math.isclose(float(ratio) * math.pi, value, abs_tol=1e-9):
         num, den = ratio.numerator, ratio.denominator
@@ -184,7 +187,7 @@ def _gate_label(op: LogicalOp) -> str:
 
 
 def _math(text: str) -> str:
-    """Upright mathtext, so names match the Computer Modern of the gates."""
+    """Return ``text`` as upright mathtext, matching the gate labels."""
     return r"$\mathrm{" + text.replace("_", r"\_").replace(" ", r"\ ") + "}$"
 
 
@@ -193,7 +196,7 @@ def _is_cnot(op: LogicalOp) -> bool:
 
 
 def _is_cz(op: LogicalOp) -> bool:
-    """CZ is symmetric, so textbooks draw it as two dots."""
+    """Return whether ``op`` is a CZ, which is drawn as two dots."""
     return op.name == "z" and len(op.controls) == 1 and op.condition is None
 
 
@@ -317,7 +320,7 @@ def _draw_register_labels(
 def _draw_wires(
     ax: Axes, layout: _Layout, centers: list[float], n: int, x_end: float
 ) -> None:
-    """Single (quantum) wire up to a measurement, double (classical) after."""
+    """Draw each wire: single until its measurement, double after."""
     classical_from = {
         op.targets[0]: centers[column] + BOX / 2
         for op, column in layout.placements
@@ -340,7 +343,7 @@ def _draw_wires(
 def _draw_groups(
     ax: Axes, layout: _Layout, centers: list[float], widths: list[float]
 ) -> None:
-    """Dashed frame and name around each gate-definition call."""
+    """Draw a dashed, named frame around each gate-definition call."""
     for group in layout.groups:
         left = (
             centers[group.first_column]
@@ -379,7 +382,7 @@ def _draw_groups(
 def _brace(
     ax: Axes, x: float, top: float, bottom: float, width: float = 0.16
 ) -> None:
-    """A left-pointing curly brace from ``top`` to ``bottom`` at ``x``."""
+    """Draw a left-pointing curly brace from ``top`` to ``bottom``."""
     middle = (top + bottom) / 2
     r = min(0.14, (top - bottom) / 4)  # corner radius
     h = x - width / 2  # the brace's vertical stroke
