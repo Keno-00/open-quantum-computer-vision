@@ -22,7 +22,4 @@ autodoc_typehints = "description"
 
 exclude_patterns = ["_build"]
 
-html_theme = "pydata_sphinx_theme"
-html_theme_options = {
-    "github_url": "https://github.com/Keno-00/open-quantum-computer-vision",
-}
+html_theme = "groundwork"

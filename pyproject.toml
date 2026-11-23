@@ -22,7 +22,7 @@ Source = "https://github.com/Keno-00/open-quantum-computer-vision"
 image = ["pillow>=10"]
 test = ["pytest>=8"]
 lint = ["ruff>=0.6"]
-docs = ["sphinx>=7", "pydata-sphinx-theme>=0.15"]
+docs = ["sphinx>=7", "groundwork-sphinx-theme>=1.1.1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
