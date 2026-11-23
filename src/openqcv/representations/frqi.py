@@ -11,20 +11,20 @@ from qiskit.circuit.library import RYGate
 
 from openqcv.core.blocks import Block
 from openqcv.core.program import ExecutionResult, QasmProgram
-from openqcv.image.preprocess import as_grayscale, position_qubits
+from openqcv.image.preprocess import as_grayscale, index_qubits
 from openqcv.representations.base import (
     IDENTITY_ANGLE,
+    QIR,
     EncodedImage,
-    Representation,
     controlled,
     image_shape,
     marginal,
-    register_representation,
+    register,
 )
 
 
-@register_representation
-class FRQI(Representation):
+@register
+class FRQI(QIR):
     r"""Flexible representation of quantum images: intensities as angles.
 
     Each intensity :math:`x_i` is mapped linearly onto an angle
@@ -87,7 +87,7 @@ class FRQI(Representation):
 
     def qubits_required(self, shape: tuple[int, ...]) -> int:
         """Return ``ceil(log2 N) + 1``: position qubits and one color qubit."""
-        return position_qubits(prod(shape[:2])) + 1
+        return index_qubits(prod(shape[:2])) + 1
 
     def encode(self, image: ArrayLike) -> EncodedImage:
         """Map intensities to angles and rotate the color qubit per pixel.
@@ -107,7 +107,7 @@ class FRQI(Representation):
             if high == low:
                 high = low + 1.0  # constant image: every angle is 0
 
-        n = position_qubits(pixels.size)
+        n = index_qubits(pixels.size)
         angles = (pixels.ravel() - low) / (high - low) * (pi / 2)
 
         position = QuantumRegister(n, "position")
@@ -124,7 +124,7 @@ class FRQI(Representation):
                 )
 
         meta = {"shape": list(pixels.shape), "value_range": [low, high]}
-        return EncodedImage(self.name, circuit, meta)
+        return EncodedImage(circuit, meta)
 
     @classmethod
     def decode(

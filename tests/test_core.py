@@ -5,7 +5,7 @@ import pytest
 
 import openqcv as qcv
 from openqcv.backends import BACKENDS, Backend, SimulatorBackend
-from openqcv.image import as_grayscale, position_qubits
+from openqcv.image import as_grayscale, index_qubits
 from openqcv.representations import FRQI, NEQR, QPIE, REPRESENTATIONS
 
 IMAGE = np.array([[0, 64], [128, 255]], dtype=np.uint8)
@@ -108,8 +108,8 @@ def test_as_grayscale_validation():
 @pytest.mark.parametrize(
     ("pixels", "qubits"), [(1, 1), (2, 1), (3, 2), (4, 2), (5, 3), (64, 6)]
 )
-def test_position_qubits(pixels, qubits):
-    assert position_qubits(pixels) == qubits
+def test_index_qubits(pixels, qubits):
+    assert index_qubits(pixels) == qubits
 
 
 # ------------------------------------------------------- representation input

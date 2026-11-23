@@ -11,14 +11,14 @@ from qiskit.circuit.library import XGate
 
 from openqcv.core.blocks import Block
 from openqcv.core.program import ExecutionResult, QasmProgram
-from openqcv.image.preprocess import as_grayscale, position_qubits
+from openqcv.image.preprocess import as_grayscale, index_qubits
 from openqcv.representations.base import (
+    QIR,
     EncodedImage,
-    Representation,
     controlled,
     image_shape,
     marginal,
-    register_representation,
+    register,
 )
 
 _INTEGER_SPACINGS = 1
@@ -30,8 +30,8 @@ that sum to 1 only up to rounding; the result is at most one spacing from
 """
 
 
-@register_representation
-class NEQR(Representation):
+@register
+class NEQR(QIR):
     r"""Novel enhanced quantum representation: intensities as bit strings.
 
     Each intensity is an integer :math:`f(i) \in \{0, \dots, 2^q - 1\}`
@@ -89,7 +89,7 @@ class NEQR(Representation):
 
     def qubits_required(self, shape: tuple[int, ...]) -> int:
         """Return ``ceil(log2 N) + bit_depth``."""
-        return position_qubits(prod(shape[:2])) + self.bit_depth
+        return index_qubits(prod(shape[:2])) + self.bit_depth
 
     def encode(self, image: ArrayLike) -> EncodedImage:
         """Write each pixel's binary intensity under its position.
@@ -113,7 +113,7 @@ class NEQR(Representation):
                 f"in 0..{top}"
             )
 
-        n, q = position_qubits(pixels.size), self.bit_depth
+        n, q = index_qubits(pixels.size), self.bit_depth
         position = QuantumRegister(n, "position")
         intensity = QuantumRegister(q, "intensity")
         circuit = QuantumCircuit(position, intensity, name=self.name)
@@ -126,7 +126,7 @@ class NEQR(Representation):
                 )
 
         return EncodedImage(
-            self.name, circuit, {"shape": list(pixels.shape), "bit_depth": q}
+            circuit, {"shape": list(pixels.shape), "bit_depth": q}
         )
 
     @classmethod

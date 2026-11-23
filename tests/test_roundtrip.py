@@ -5,7 +5,6 @@ import pytest
 from qiskit import qasm2
 
 import openqcv as qcv
-from openqcv.backends import SimulatorBackend
 
 # 9 pixels: forces padding to 16 positions, and is asymmetric, so a bit-order
 # mistake anywhere shows up as a scrambled image.
@@ -21,41 +20,15 @@ def roundtrip(image, representation, backend="statevector", shots=None):
     return qcv.decode(qcv.run(program, backend, shots), program)
 
 
-@pytest.mark.parametrize("representation", REPRESENTATIONS)
-@pytest.mark.parametrize("image", [IMAGE, RANDOM], ids=["3x3", "random4x4"])
-def test_exact_roundtrip(representation, image):
-    np.testing.assert_allclose(
-        roundtrip(image, representation), image, atol=1e-6
-    )
-
-
-@pytest.mark.parametrize("representation", REPRESENTATIONS)
-def test_json_roundtrip(representation):
-    program = qcv.encode(IMAGE, representation)
-    received = qcv.QasmProgram.from_json(program.to_json())
-    assert received == program
-    np.testing.assert_allclose(
-        qcv.decode(qcv.run(received), received), IMAGE, atol=1e-6
-    )
-
-
 @pytest.mark.parametrize(
     ("representation", "tolerance"), [("qpie", 8), ("frqi", 12), ("neqr", 0)]
 )
-def test_shot_based_roundtrip(representation, tolerance):
-    decoded = roundtrip(
-        IMAGE, representation, SimulatorBackend(seed=7), shots=20_000
+@pytest.mark.parametrize("image", [IMAGE, RANDOM], ids=["3x3", "random4x4"])
+def test_check(representation, tolerance, image):
+    # Exact and JSON round trips, drawing, qubit count and a sampled run.
+    qcv.qir.check(
+        representation, image, shots=20_000, shot_tolerance=tolerance
     )
-    np.testing.assert_allclose(decoded, IMAGE, atol=tolerance)
-
-
-@pytest.mark.parametrize("representation", REPRESENTATIONS)
-def test_qubit_count_matches_prediction(representation):
-    program = qcv.encode(IMAGE, representation)
-    predicted = qcv.representations.REPRESENTATIONS.create(
-        representation
-    ).qubits_required(IMAGE.shape)
-    assert program.num_qubits == predicted
 
 
 @pytest.mark.parametrize("representation", REPRESENTATIONS)

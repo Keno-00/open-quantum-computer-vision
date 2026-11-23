@@ -11,6 +11,7 @@ Each program carries two levels of QASM:
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -31,12 +32,37 @@ MEASUREMENT_REGISTER = "meas"
 
 
 def to_program(
-    encoded: EncodedImage, basis: Sequence[str] = DEFAULT_BASIS
+    encoded: EncodedImage,
+    representation: str,
+    basis: Sequence[str] = DEFAULT_BASIS,
 ) -> QasmProgram:
     """Export an :class:`EncodedImage` as a :class:`QasmProgram`.
 
     Every qubit ``j`` is measured into bit ``j`` of the ``meas`` register.
+
+    Args:
+        encoded: The circuit and metadata.
+        representation: The registered name of the QIR that produced it;
+            :func:`openqcv.decode` looks the decoder up by this name.
+        basis: The gates the lowered circuit is built from.
+
+    Raises:
+        ValueError: If a register is called ``meas``, the circuit has a gate
+            with no logical QASM form, or ``meta`` cannot be written as JSON.
     """
+    if MEASUREMENT_REGISTER in encoded.registers:
+        raise ValueError(
+            f"The register name {MEASUREMENT_REGISTER!r} is reserved for "
+            "measurement results"
+        )
+    meta = _jsonable(encoded.meta)
+    try:
+        json.dumps(meta, allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            f"meta must be JSON-serializable with finite numbers: {error}"
+        ) from None
+
     circuit = encoded.circuit.copy()
     circuit.add_register(
         ClassicalRegister(circuit.num_qubits, MEASUREMENT_REGISTER)
@@ -53,12 +79,12 @@ def to_program(
     )
 
     return QasmProgram(
-        representation=encoded.representation,
+        representation=representation,
         logical_qasm=logical.dumps(circuit),
         qasm2=qasm2.dumps(lowered),
         qasm3=qasm3.dumps(lowered),
         registers=encoded.registers,
-        meta=_jsonable(encoded.meta),
+        meta=meta,
     )
 
 

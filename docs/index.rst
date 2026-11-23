@@ -11,6 +11,7 @@ Installation and a first example are in the
 
    workflow
    representations
+   qir
    programs
    export
    backends

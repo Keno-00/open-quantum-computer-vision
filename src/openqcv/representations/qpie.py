@@ -11,20 +11,20 @@ from qiskit.circuit.library import RYGate
 
 from openqcv.core.blocks import Block
 from openqcv.core.program import ExecutionResult, QasmProgram
-from openqcv.image.preprocess import as_grayscale, position_qubits
+from openqcv.image.preprocess import as_grayscale, index_qubits
 from openqcv.representations.base import (
     IDENTITY_ANGLE,
+    QIR,
     EncodedImage,
-    Representation,
     controlled,
     image_shape,
     marginal,
-    register_representation,
+    register,
 )
 
 
-@register_representation
-class QPIE(Representation):
+@register
+class QPIE(QIR):
     r"""Quantum probability image encoding: intensities as amplitudes.
 
     An image with non-negative intensities :math:`x_0, \dots, x_{N-1}` is
@@ -83,7 +83,7 @@ class QPIE(Representation):
 
     def qubits_required(self, shape: tuple[int, ...]) -> int:
         """Return ``ceil(log2 N)``, the number of position qubits."""
-        return position_qubits(prod(shape[:2]))
+        return index_qubits(prod(shape[:2]))
 
     def encode(self, image: ArrayLike) -> EncodedImage:
         """Prepare the normalized intensities as amplitudes.
@@ -95,7 +95,7 @@ class QPIE(Representation):
         if (pixels < 0).any():
             raise ValueError("QPIE needs non-negative intensities")
 
-        n = position_qubits(pixels.size)
+        n = index_qubits(pixels.size)
         weights = np.zeros(1 << n)
         weights[: pixels.size] = pixels.ravel() ** 2
         norm = sqrt(float(weights.sum()))
@@ -110,7 +110,7 @@ class QPIE(Representation):
                 circuit.append(Block(f"level_{level}", body), position)
 
         return EncodedImage(
-            self.name, circuit, {"shape": list(pixels.shape), "norm": norm}
+            circuit, {"shape": list(pixels.shape), "norm": norm}
         )
 
     @classmethod

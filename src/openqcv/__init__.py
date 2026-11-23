@@ -9,6 +9,7 @@ References:
     arXiv:2405.08810
 """
 
+from openqcv import qir
 from openqcv.core.program import ExecutionResult, QasmProgram
 from openqcv.image import load_image
 from openqcv.pipeline import (
@@ -33,5 +34,6 @@ __all__ = [
     "list_backends",
     "list_representations",
     "load_image",
+    "qir",
     "run",
 ]

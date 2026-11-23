@@ -1,7 +1,9 @@
-"""The contract every quantum image representation follows."""
+"""The contract every quantum image representation (QIR) follows."""
 
 from __future__ import annotations
 
+import inspect
+import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Sequence
@@ -16,38 +18,76 @@ from qiskit.circuit import Gate, Qubit
 from openqcv.core.program import ExecutionResult, QasmProgram
 from openqcv.core.registry import Registry
 
+_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+"""Register names must be valid OpenQASM identifiers."""
+
 
 @dataclass(frozen=True)
 class EncodedImage:
-    """A representation's output, before it is exported to QASM.
+    """A QIR's output, before it is exported to QASM.
 
     Attributes:
-        representation: Name of the representation, e.g. ``"neqr"``.
-        circuit: The logical circuit, without measurements. Each quantum
-            register's name is its role (``"position"``, ``"color"``, ...),
-            it is built from standard (controlled) gates, and high-level steps
-            are wrapped in :class:`~openqcv.core.Block` gates.
+        circuit: The logical circuit, without measurements. Every qubit
+            belongs to exactly one named quantum register; the QIR chooses
+            the names. It is built from standard (controlled) gates, and
+            high-level steps are wrapped in :class:`~openqcv.core.Block`
+            gates.
         meta: JSON-serializable classical information needed to decode.
+
+    Raises:
+        TypeError: If ``circuit`` is not a ``QuantumCircuit`` or ``meta`` is
+            not a ``dict``.
+        ValueError: If the circuit has classical bits, has a qubit outside
+            every register, or a register name is not an identifier.
     """
 
-    representation: str
     circuit: QuantumCircuit
     meta: dict[str, Any]
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.circuit, QuantumCircuit):
+            raise TypeError(
+                "circuit must be a QuantumCircuit, got "
+                f"{type(self.circuit).__name__}"
+            )
+        if not isinstance(self.meta, dict):
+            raise TypeError(
+                f"meta must be a dict, got {type(self.meta).__name__}"
+            )
+        if self.circuit.num_clbits:
+            raise ValueError(
+                "The circuit must have no classical bits; every qubit is "
+                "measured when the program is exported"
+            )
+        registered = sum(register.size for register in self.circuit.qregs)
+        if registered != self.circuit.num_qubits:
+            raise ValueError(
+                "Every qubit must belong to exactly one named register"
+            )
+        for register in self.circuit.qregs:
+            if not _IDENTIFIER.fullmatch(register.name):
+                raise ValueError(
+                    f"Register name {register.name!r} is not an identifier "
+                    "(letters, digits and _, not starting with a digit)"
+                )
+
     @property
     def registers(self) -> dict[str, list[int]]:
-        """Role -> qubit indices, taken from the circuit's register names."""
+        """Register name -> qubit indices, in register order."""
         return {
             register.name: [self.circuit.find_bit(q).index for q in register]
             for register in self.circuit.qregs
         }
 
 
-class Representation(ABC):
+class QIR(ABC):
     """Base class for quantum image representations.
 
-    To add one: subclass this, set ``name``, implement the three methods and
-    decorate the class with ``@register_representation``.
+    A QIR is a class with a ``name``, an :meth:`encode` method and a
+    :meth:`decode` classmethod, registered with :func:`register`. Nothing
+    else is prescribed: it chooses its own registers, metadata and readout.
+    :func:`openqcv.pipeline.check` verifies that it works with the rest of
+    openqcv.
 
     ``decode`` is a classmethod on purpose: it may use only the result and
     ``program.meta``, never encoding options. That is what lets a program
@@ -55,10 +95,6 @@ class Representation(ABC):
     """
 
     name: ClassVar[str]
-
-    @abstractmethod
-    def qubits_required(self, shape: tuple[int, ...]) -> int:
-        """Return the number of qubits needed for an image of ``shape``."""
 
     @abstractmethod
     def encode(self, image: ArrayLike) -> EncodedImage:
@@ -69,16 +105,54 @@ class Representation(ABC):
     def decode(
         cls, result: ExecutionResult, program: QasmProgram
     ) -> np.ndarray:
-        """Reconstruct the image (float64, original shape) from a result."""
+        """Reconstruct the image from a result."""
 
+    def qubits_required(self, shape: tuple[int, ...]) -> int:
+        """Return the number of qubits needed for an image of ``shape``.
+
+        Optional; :func:`openqcv.pipeline.check` compares it with the encoded
+        program when a QIR implements it.
+
+        Raises:
+            NotImplementedError: If the QIR does not predict its qubit
+                count.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not predict its qubit count"
+        )
+
+
+Representation = QIR
+"""The former name of :class:`QIR`, kept so existing code keeps working."""
 
 IDENTITY_ANGLE = 1e-12
 """Rotations by at most this angle (radians) are the identity and omitted."""
 
-REPRESENTATIONS: Registry[Representation] = Registry(
-    "representation", Representation
+REPRESENTATIONS: Registry[QIR] = Registry(
+    "representation", QIR, entry_point_group="openqcv.representations"
 )
-register_representation = REPRESENTATIONS.register
+
+
+def register(cls: type[QIR]) -> type[QIR]:
+    """Register a QIR under its ``name``; a class decorator.
+
+    Raises:
+        TypeError: If ``cls`` is not a :class:`QIR` subclass, has no
+            ``name``, or its ``decode`` is not a classmethod.
+        ValueError: If the name is taken.
+    """
+    if isinstance(cls, type) and not isinstance(
+        inspect.getattr_static(cls, "decode", None), classmethod
+    ):
+        raise TypeError(
+            f"{cls.__name__}.decode must be a classmethod, so that it can "
+            "use only the result and the program"
+        )
+    return REPRESENTATIONS.register(cls)
+
+
+register_representation = register
+"""The former name of :func:`register`."""
 
 
 def controlled(
@@ -106,20 +180,20 @@ def controlled(
 
 
 def marginal(
-    result: ExecutionResult, program: QasmProgram, *roles: str
+    result: ExecutionResult, program: QasmProgram, *registers: str
 ) -> dict[tuple[int, ...], float]:
-    """Return the probability of each joint value of ``roles``.
+    """Return the probability of each joint value of ``registers``.
 
     Example: ``marginal(result, program, "position", "color")`` maps
     ``(pixel_index, color_bit)`` to its probability.
     """
     totals: dict[tuple[int, ...], float] = defaultdict(float)
     for bits, p in result.probabilities.items():
-        totals[tuple(program.value(bits, role) for role in roles)] += p
+        totals[tuple(program.value(bits, name) for name in registers)] += p
     return dict(totals)
 
 
 def image_shape(program: QasmProgram) -> tuple[tuple[int, ...], int]:
-    """Return the original image shape and its pixel count."""
+    """Return ``meta["shape"]`` and its pixel count."""
     shape = tuple(int(s) for s in program.meta["shape"])
     return shape, int(np.prod(shape))

@@ -55,8 +55,8 @@ def as_grayscale(image: ArrayLike) -> np.ndarray:
     return gray
 
 
-def position_qubits(pixel_count: int) -> int:
-    """Qubits needed to index ``pixel_count`` pixels (at least 1)."""
-    if pixel_count < 1:
-        raise ValueError("pixel_count must be at least 1")
-    return max(1, (pixel_count - 1).bit_length())
+def index_qubits(count: int) -> int:
+    """Qubits needed to index ``count`` items, e.g. pixels (at least 1)."""
+    if count < 1:
+        raise ValueError("count must be at least 1")
+    return max(1, (count - 1).bit_length())

@@ -8,13 +8,15 @@ these rules serve are in the [README](../README.md#goals).
 ```
 src/openqcv/
 ├── core/              QasmProgram, ExecutionResult, Block, Registry
-├── image/             as_grayscale, position_qubits, load_image
-├── representations/   Representation base, QPIE, FRQI, NEQR
+├── image/             as_grayscale, index_qubits, load_image
+├── representations/   QIR base, Circuit builder, QPIE, FRQI, NEQR
 ├── export/            qasm.py (lowering), logical.py (textbook OpenQASM 3)
 ├── backends/          Backend base, statevector, simulator
 ├── viz/               circuit.py, image.py, drawing.py (PAPER_STYLE)
-└── pipeline.py        encode, run, decode
-tests/                 test_roundtrip.py, test_logical.py, test_core.py
+├── pipeline.py        encode, run, decode, check
+└── qir.py             the public API for writing a QIR (re-exports)
+tests/                 test_roundtrip.py, test_logical.py, test_core.py,
+                       test_qir.py
 docs/                  design.md, Sphinx sources (conf.py, *.rst),
                        make_figures.py, images/
 ```
@@ -26,8 +28,8 @@ approval.
 
 1. Dependency direction: `core` imports nothing from openqcv.
    `representations` and `backends` never import each other; `pipeline` is
-   the only module that knows both. `viz` reads QASM text, not
-   representation objects.
+   the only module that knows both, and `qir` only re-exports from it.
+   `viz` reads QASM text, not representation objects.
 2. `QasmProgram` is the contract between representations and backends.
    Everything needed to run, draw or decode an image is in it, and it
    survives `to_json` / `from_json` unchanged.
@@ -35,8 +37,9 @@ approval.
    never encoding options, so a received program is decodable by anyone.
 4. Backends read only `program.qasm2` / `program.qasm3` and return
    bitstrings in the order defined in `openqcv.core.program`.
-5. Register names are roles (`position`, `color`, `intensity`).
-6. Representations are built from standard gates, using `controlled` for
+5. A QIR chooses its own registers and their names; openqcv prescribes no
+   roles and no readout. Names must be identifiers other than `meas`.
+6. QIRs are built from standard gates, using `controlled` for
    conditioned gates and a `Block` with a unique name for each high-level
    step. Opaque library gates (`StatePreparation`, `UCRYGate`, ...) are not
    allowed: logical QASM cannot express them, so the figures would omit
@@ -117,23 +120,26 @@ Weight is earned, not assigned:
 
 ## Tests
 
-- Every representation round-trips exactly on `statevector` (including a
-  padded, asymmetric image, which exposes bit-order errors), through JSON,
-  and within a stated tolerance on `simulator`.
+- Every QIR passes `openqcv.qir.check` (exact on `statevector`, through
+  JSON, and within a stated tolerance on `simulator`) on a padded,
+  asymmetric image, which exposes bit-order errors.
 - Every bug fix comes with a test that fails without it.
 - Every validation error has a test asserting its type and message.
 - Assertions are exact where possible; random tests fix their seed.
 
 ## Adding a representation
 
-1. Create `representations/<name>.py`: a `Representation` subclass
-   decorated with `@register_representation`, whose docstring gives the
-   state, qubit count, circuit, readout and `References:`.
-2. Build the circuit with `controlled` and named `Block`s.
+Built-in QIRs use the same API as users' QIRs (`openqcv.qir`).
+
+1. Create `representations/<name>.py`: a `QIR` subclass decorated with
+   `@register`, whose docstring gives the state, qubit count, circuit,
+   readout and `References:`.
+2. Build the circuit from standard gates and named `Block`s, with
+   `Circuit` or with `controlled`.
 3. Put everything decoding needs in `meta`; implement `decode` as a
-   classmethod using `marginal` and `image_shape`.
+   classmethod.
 4. Export the class in `representations/__init__.py`.
-5. Add it to `REPRESENTATIONS` in `tests/test_roundtrip.py` and add its
+5. Add it to `test_check` in `tests/test_roundtrip.py` and add its
    validation tests to `tests/test_core.py`.
 6. Render its circuit and look at it.
 
