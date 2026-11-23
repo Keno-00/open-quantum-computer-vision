@@ -109,10 +109,11 @@ received = qcv.QasmProgram.from_json(program.to_json())
 decoded = qcv.decode(qcv.run(received), received)
 ```
 
-The reference documentation, including the mathematics and the references
-of each representation, is generated from the docstrings; see
-[CONTRIBUTING.md](CONTRIBUTING.md#checks) to build it. The same text is
-available through `help()`, e.g. `help(qcv.representations.FRQI)`.
+The [reference documentation](https://openqcv.readthedocs.io/), including
+the mathematics and the references of each representation, is generated from
+the docstrings; see [CONTRIBUTING.md](CONTRIBUTING.md#checks) to build it
+locally. The same text is available through `help()`, e.g.
+`help(qcv.representations.FRQI)`.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
