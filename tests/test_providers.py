@@ -23,11 +23,11 @@ IMAGE = np.array([[3, 9, 1], [15, 0, 6]])
 
 needs_aer = pytest.mark.skipif(
     not PROVIDERS.get("aer").available(),
-    reason="qiskit-aer is not installed (pip install openqcv[aer])",
+    reason='qiskit-aer is not installed (pip install "openqcv[aer]")',
 )
 needs_ibm = pytest.mark.skipif(
     not PROVIDERS.get("ibm_fake").available(),
-    reason="qiskit-ibm-runtime is not installed (pip install openqcv[ibm])",
+    reason='qiskit-ibm-runtime is not installed (pip install "openqcv[ibm]")',
 )
 
 
@@ -82,7 +82,7 @@ def test_a_registered_provider_is_found_by_name(monkeypatch):
 def test_missing_packages_are_reported(provider, monkeypatch):
     monkeypatch.setitem(sys.modules, "qiskit_aer", None)
     assert provider not in qcv.list_providers()
-    with pytest.raises(ImportError, match=r"pip install openqcv\[aer\]"):
+    with pytest.raises(ImportError, match=r'pip install "openqcv\[aer\]"'):
         PROVIDERS.create(provider)
 
 
@@ -162,3 +162,40 @@ def test_ibm_device_runs_and_limits_qubits():
         qcv.run(_program([], qubits=6), "ibm_fake:fake_manila")
     with pytest.raises(ValueError, match="Unknown device 'fake_nowhere'"):
         get_backend("ibm_fake:fake_nowhere")
+
+
+def test_a_broken_installed_provider_is_skipped_with_a_warning(monkeypatch):
+    from importlib.metadata import EntryPoint
+
+    from openqcv.core import registry
+
+    found = [
+        EntryPoint("broken", "no_such_module:Provider", "openqcv.providers")
+    ]
+    monkeypatch.setattr(
+        registry,
+        "entry_points",
+        lambda group: found if group == "openqcv.providers" else [],
+    )
+    monkeypatch.setattr(PROVIDERS, "_classes", dict(PROVIDERS._classes))
+    with pytest.warns(UserWarning, match="Provider 'broken' could not be"):
+        providers = qcv.list_providers()
+    assert "broken" not in providers
+    assert "openqcv" in providers
+
+
+@needs_aer
+@needs_ibm
+def test_ibm_devices_load_once_and_take_options():
+    from openqcv.backends import ibm_fake
+
+    first = PROVIDERS.create("ibm_fake")
+    second = PROVIDERS.create("ibm_fake")
+    assert first._devices is second._devices is ibm_fake._DEVICES
+    backend = get_backend(
+        "ibm_fake:fake_manila", seed=SEED, max_parallel_threads=1
+    )
+    program = qcv.encode(np.array([[1, 3], [2, 0]]), "neqr", bit_depth=2)
+    assert np.array_equal(
+        qcv.decode(backend.run(program, SHOTS), program), [[1, 3], [2, 0]]
+    )

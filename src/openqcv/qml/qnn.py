@@ -18,6 +18,7 @@ rule and are exact on ``"statevector"``.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -42,6 +43,13 @@ HERMITIAN_TOLERANCE = 1e-12
 an observable must be Hermitian for its expectation to be real, and a
 simplified ``SparsePauliOp`` of a Hermitian operator has real
 coefficients up to rounding."""
+
+TEMPLATE_CACHE = 1024
+"""Inputs whose lowered circuits a network keeps, least recently used
+dropped first. Lowering is the costly step of an image's first evaluation,
+and training evaluates the same images every step: the cache holds a
+training set of this size, while predicting on a stream of new images does
+not grow memory without bound."""
 
 Readout = Callable[[dict[str, float]], np.ndarray]
 """Outcome probabilities -> a contribution to the network's outputs."""
@@ -119,7 +127,9 @@ class NeuralNetwork(ABC):
         self._backend = get_backend(backend)
         self._shots = shots
         self._fast_export = bool(fast_export)
-        self._templates: dict[Any, list[tuple[Template, Readout]]] = {}
+        self._templates: OrderedDict[Any, list[tuple[Template, Readout]]] = (
+            OrderedDict()
+        )
 
     @property
     def circuit(self) -> QuantumCircuit:
@@ -269,7 +279,9 @@ class NeuralNetwork(ABC):
         ]
 
     def _templates_for(self, key: Any) -> list[tuple[Template, Readout]]:
-        if key not in self._templates:
+        if key in self._templates:
+            self._templates.move_to_end(key)
+        else:
             base = self._base_circuit(key)
             templates = []
             for rotation, readout in self._readouts():
@@ -280,6 +292,8 @@ class NeuralNetwork(ABC):
                     (Template(circuit, self._fast_export), readout)
                 )
             self._templates[key] = templates
+            if len(self._templates) > TEMPLATE_CACHE:
+                self._templates.popitem(last=False)
         return self._templates[key]
 
     def _base_circuit(self, key: Any) -> QuantumCircuit:

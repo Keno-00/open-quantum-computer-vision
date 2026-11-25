@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
@@ -127,7 +128,19 @@ def get_backend(
 
 
 def list_providers() -> list[str]:
-    """Return the providers whose packages are installed."""
-    return [
-        name for name in PROVIDERS.names() if PROVIDERS.get(name).available()
-    ]
+    """Return the providers whose packages are installed.
+
+    A provider that an installed package declares but that fails to load is
+    left out, with a warning that says why.
+    """
+    names = []
+    for name in PROVIDERS.names():
+        try:
+            if PROVIDERS.get(name).available():
+                names.append(name)
+        except (ImportError, ValueError) as error:
+            warnings.warn(
+                f"Provider {name!r} could not be loaded: {error}",
+                stacklevel=2,
+            )
+    return names

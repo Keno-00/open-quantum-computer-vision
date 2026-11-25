@@ -149,22 +149,32 @@ class TrainableModel(ABC):
             ValueError: If ``x`` and ``y`` have different lengths, or the
                 targets do not fit the network's output.
             TypeError: If the optimizer's result has no ``x``.
+
+        The model changes only when the fit succeeds: if it raises, the
+        network, classes and weights of the last fit are kept.
         """
         if len(x) != len(y):
             raise ValueError(
                 f"x has {len(x)} samples and y has {len(y)}; they must match"
             )
-        targets = self._targets(x, y)
-        network = self._neural_network
+        network, targets, state = self._prepare(x, y)
         weights = self._start(network)
-        self._fit_result = self._minimize(network, x, targets, weights)
+        result = self._minimize(network, x, targets, weights)
+        self._neural_network = network
+        for name, value in state.items():
+            setattr(self, name, value)
+        self._fit_result = result
         return self
 
     @abstractmethod
-    def _targets(self, x: Any, y: ArrayLike) -> np.ndarray:
-        """Return the targets as ``(n, *output_shape)``.
+    def _prepare(
+        self, x: Any, y: ArrayLike
+    ) -> tuple[NeuralNetwork, np.ndarray, dict[str, Any]]:
+        """Return the network to train, the targets and the model state.
 
-        A model that builds its own network builds it here first.
+        Targets have shape ``(n, *output_shape)``; the state maps attribute
+        names to the values :meth:`fit` sets once training succeeds. Nothing
+        on the model changes here.
         """
 
     def _start(self, network: NeuralNetwork) -> np.ndarray:
@@ -313,9 +323,12 @@ class NeuralNetworkClassifier(TrainableModel):
         """Return the (weighted) fraction of samples predicted correctly."""
         return accuracy(self.predict(x), y, sample_weight)
 
-    def _targets(self, x: Any, y: ArrayLike) -> np.ndarray:
+    def _prepare(
+        self, x: Any, y: ArrayLike
+    ) -> tuple[NeuralNetwork, np.ndarray, dict[str, Any]]:
         y = np.asarray(y)
-        if self._one_hot:
+        one_hot = self._one_hot_for(y)
+        if one_hot:
             if (
                 y.ndim != 2
                 or not np.all((y == 0) | (y == 1))
@@ -341,21 +354,26 @@ class NeuralNetworkClassifier(TrainableModel):
                 "A warm start needs the classes of the last fit, "
                 f"{self._classes.tolist()}; got {classes.tolist()}"
             )
-        self._classes = classes
-        outputs = self._network(x, len(classes)).output_shape[0]
+        network = self._network(x, len(classes))
+        state = {"_classes": classes, "_one_hot": one_hot}
+        outputs = network.output_shape[0]
         if outputs == 1:
             if len(classes) != 2:
                 raise ValueError(
                     "A network with one output separates two classes; y "
                     f"has {len(classes)}"
                 )
-            return np.where(index == 1, 1.0, -1.0)[:, None]
+            return network, np.where(index == 1, 1.0, -1.0)[:, None], state
         if outputs != len(classes):
             raise ValueError(
                 f"The network has {outputs} outputs; y has {len(classes)} "
                 "classes"
             )
-        return np.eye(outputs)[index]
+        return network, np.eye(outputs)[index], state
+
+    def _one_hot_for(self, y: np.ndarray) -> bool:
+        """Whether ``y`` is given as one-hot rows."""
+        return self._one_hot
 
     def _network(self, x: Any, num_classes: int) -> NeuralNetwork:
         """Return the network to train for ``num_classes`` classes."""
@@ -421,7 +439,9 @@ class NeuralNetworkRegressor(TrainableModel):
         r2 = np.where(total > 0, 1 - residual / safe, exact.astype(float))
         return float(r2.mean())
 
-    def _targets(self, x: Any, y: ArrayLike) -> np.ndarray:
+    def _prepare(
+        self, x: Any, y: ArrayLike
+    ) -> tuple[NeuralNetwork, np.ndarray, dict[str, Any]]:
         network = self._network(x)
         shape = network.output_shape
         target = np.asarray(y, dtype=float)
@@ -432,7 +452,7 @@ class NeuralNetworkRegressor(TrainableModel):
                 f"y has shape {np.shape(y)}; the network outputs {shape} "
                 "per sample"
             )
-        return target
+        return network, target, {}
 
     def _network(self, x: Any) -> NeuralNetwork:
         """Return the network to train."""
@@ -552,15 +572,17 @@ class VQC(_Variational, NeuralNetworkClassifier):
 
         See :meth:`TrainableModel.fit`.
         """
-        self._one_hot = np.ndim(y) == 2
         super().fit(x, y)
         return self
+
+    def _one_hot_for(self, y: np.ndarray) -> bool:
+        return y.ndim == 2
 
     def _network(self, x: Any, num_classes: int) -> NeuralNetwork:
         if self._neural_network is None or not self._warm_start:
             classes = self._output_shape or num_classes
             interpret = self._interpret or _modulo(classes)
-            self._neural_network = SamplerQNN(
+            return SamplerQNN(
                 interpret=interpret,
                 output_shape=classes,
                 backend=self._backend,
@@ -628,7 +650,7 @@ class VQR(_Variational, NeuralNetworkRegressor):
 
     def _network(self, x: Any) -> NeuralNetwork:
         if self._neural_network is None or not self._warm_start:
-            self._neural_network = EstimatorQNN(
+            return EstimatorQNN(
                 observables=self._observable,
                 backend=self._backend,
                 shots=self._shots,

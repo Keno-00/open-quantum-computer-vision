@@ -168,7 +168,7 @@ class QSVC:
 
     The kernel matrices are computed by ``quantum_kernel`` and passed to
     scikit-learn's ``SVC`` as precomputed kernels, so the inputs may be
-    images. Needs scikit-learn (``pip install openqcv[qml]``).
+    images. Needs scikit-learn (``pip install "openqcv[qml]"``).
 
     Args:
         quantum_kernel: The kernel.
@@ -188,7 +188,7 @@ class QSVC:
             from sklearn.svm import SVC
         except ImportError:
             raise ImportError(
-                "QSVC needs scikit-learn: pip install openqcv[qml]"
+                'QSVC needs scikit-learn: pip install "openqcv[qml]"'
             ) from None
         if not isinstance(quantum_kernel, FidelityQuantumKernel):
             raise TypeError(

@@ -760,7 +760,7 @@ def test_qsvc_without_scikit_learn(monkeypatch):
     kernel = qml.FidelityQuantumKernel(feature_map="qpie")
     with pytest.raises(
         ImportError,
-        match=r"QSVC needs scikit-learn: pip install openqcv\[qml\]",
+        match=r'QSVC needs scikit-learn: pip install "openqcv\[qml\]"',
     ):
         qml.QSVC(kernel)
 
@@ -926,3 +926,64 @@ def test_fast_export_refuses_text_it_cannot_reproduce(
     )
     with pytest.raises(ValueError, match=message):
         Template(_one_parameter(), fast_export=True)
+
+
+# ------------------------------------------------- review fixes (PR #3)
+
+
+def test_a_failed_fit_keeps_the_last_model():
+    network = qml.SamplerQNN(
+        circuit=real_amplitudes(1), interpret=lambda x: x, output_shape=2
+    )
+    classifier = qml.NeuralNetworkClassifier(
+        network, optimizer="COBYLA", initial_point=[0.1] * 4
+    )
+    images = np.zeros((4, 0))  # four samples of a network without inputs
+    classifier.fit(images, ["a", "b", "a", "b"])
+    before = classifier.predict(images).tolist()
+    with pytest.raises(ValueError, match="The network has 2 outputs"):
+        classifier.fit(images[:3], ["a", "b", "c"])
+    assert classifier.classes_.tolist() == ["a", "b"]
+    assert classifier.predict(images).tolist() == before
+
+
+def test_a_failed_vqc_fit_keeps_its_network():
+    vqc = _vqc(optimizer="COBYLA")
+    vqc.fit(FEATURES, LABELS)
+    network, weights = vqc.neural_network, vqc.weights
+    failing = _vqc(optimizer=lambda **_: None)
+    failing._neural_network, failing._fit_result = network, vqc.fit_result
+    failing._classes, failing._one_hot = vqc.classes_, False
+    with pytest.raises(TypeError, match="must return an object with"):
+        failing.fit(FEATURES, LABELS)
+    assert failing.neural_network is network
+    assert np.array_equal(failing.weights, weights)
+
+
+def test_template_cache_is_bounded(monkeypatch):
+    from openqcv.qml import qnn
+
+    monkeypatch.setattr(qnn, "TEMPLATE_CACHE", 2)
+    images, _ = _images()
+    network = _qir_network()
+    weights = np.random.default_rng(SEED).random(6)
+    expected = _qir_network().forward(images[:3], weights)
+    assert np.array_equal(network.forward(images[:3], weights), expected)
+    assert len(network._templates) == 2
+    assert np.array_equal(network.forward(images[:3], weights), expected)
+
+
+def test_fast_export_without_angles_exports_once(monkeypatch):
+    calls = []
+    for field, (dump, write) in list(template_module._FORMATS.items()):
+
+        def counted(circuit, dump=dump, field=field):
+            calls.append(field)
+            return dump(circuit)
+
+        monkeypatch.setitem(template_module._FORMATS, field, (counted, write))
+    images, _ = _images()
+    circuit = encode_circuit(images[0], REPRESENTATIONS.create("qpie")).circuit
+    template = Template(circuit, fast_export=True)
+    assert template.num_angles == 0
+    assert sorted(calls) == ["logical_qasm", "qasm2", "qasm3"]

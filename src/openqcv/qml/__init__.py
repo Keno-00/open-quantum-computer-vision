@@ -31,7 +31,7 @@ byte the exporters' own, which every template checks when it is built
 (:class:`~openqcv.qml.template.Template`), so results do not change.
 
 :class:`~openqcv.qml.kernels.QSVC` needs scikit-learn
-(``pip install openqcv[qml]``).
+(``pip install "openqcv[qml]"``).
 """
 
 from openqcv.qml.kernels import QSVC, FidelityQuantumKernel

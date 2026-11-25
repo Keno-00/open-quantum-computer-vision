@@ -229,6 +229,9 @@ class Template:
                 pieces.append(before)
             pieces.append(rest)
             self._pieces[field] = pieces
+        if not self.num_angles:
+            # The text is the exporters' own and nothing is filled in.
+            return
         rng = np.random.default_rng(len(markers))
         special = np.resize(FAST_EXPORT_CHECKS, self.num_angles)
         for angles in (

@@ -1,6 +1,6 @@
 """Qiskit Aer: fast simulators, exact or sampled, ideal or noisy.
 
-Needs ``qiskit-aer`` (``pip install openqcv[aer]``). Provider ``"aer"``
+Needs ``qiskit-aer`` (``pip install "openqcv[aer]"``). Provider ``"aer"``
 offers Aer's simulation methods as backends, e.g. ``"aer:statevector"``;
 provider ``"ibm_fake"`` (:mod:`openqcv.backends.ibm_fake`) runs IBM's
 simulated devices on Aer.
@@ -34,7 +34,7 @@ ZERO = 1e-12
 """Probabilities below this are treated as exactly zero, as in the
 statevector backend."""
 
-INSTALL = "pip install openqcv[aer]"
+INSTALL = 'pip install "openqcv[aer]"'
 
 
 def require_aer() -> Any:
@@ -65,8 +65,8 @@ class AerBackend(Backend):
             reproducible results.
         device: ``"CPU"`` or, where Aer was built with it, ``"GPU"``.
         target: A device (Qiskit ``BackendV2``) to simulate instead: its
-            noise model, gates and coupling; ``method`` is then Aer's
-            choice and every result is sampled.
+            noise model, gates and coupling; ``method`` and ``device`` then
+            come from ``options`` and every result is sampled.
         **options: Passed to ``AerSimulator``, e.g. ``noise_model``.
 
     Raises:
@@ -90,7 +90,7 @@ class AerBackend(Backend):
         self.seed = seed
         self._target = target
         if target is not None:
-            self._simulator = aer.AerSimulator.from_backend(target)
+            self._simulator = aer.AerSimulator.from_backend(target, **options)
             self.name = f"aer:{target.name}"
             self.max_qubits = target.num_qubits
             self._exact = False
