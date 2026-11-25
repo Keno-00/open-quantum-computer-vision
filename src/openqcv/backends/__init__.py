@@ -1,11 +1,12 @@
 """Backends that run a :class:`~openqcv.core.program.QasmProgram`.
 
 Backends come from providers: ``"openqcv"`` (built in), ``"aer"`` (Qiskit
-Aer) and ``"ibm_fake"`` (IBM's simulated devices), and any installed
-package that declares one (see :class:`~openqcv.backends.base.Provider`).
+Aer), ``"ibm_fake"`` (IBM's simulated devices), ``"openquantum"`` (Open
+Quantum's QPUs and cloud simulators), and any installed package that
+declares one (see :class:`~openqcv.backends.base.Provider`).
 """
 
-from openqcv.backends import aer, ibm_fake
+from openqcv.backends import aer, ibm_fake, openquantum
 from openqcv.backends.base import (
     BACKENDS,
     PROVIDERS,
@@ -30,6 +31,7 @@ __all__ = [
     "get_backend",
     "ibm_fake",
     "list_providers",
+    "openquantum",
     "register_backend",
     "register_provider",
 ]

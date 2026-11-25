@@ -91,6 +91,12 @@ textbook-style figures.
    ```sh
    pip install -e "open-quantum-computer-vision[aer,ibm]"
    ```
+6. Optional: real QPUs (IonQ, Rigetti, IQM, AQT) through Open Quantum, as
+   backends `"openquantum:<code>"`; account, credentials and options are in
+   the [backends reference](https://openqcv.readthedocs.io/en/latest/backends.html)
+   ```sh
+   pip install -e "open-quantum-computer-vision[openquantum]"
+   ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -132,7 +138,7 @@ locally. The same text is available through `help()`, e.g.
 - [x] OpenQASM 2/3 export and textbook logical QASM
 - [x] Exact and sampled local backends
 - [x] Circuit and image figures
-- [ ] Hardware backends
+- [x] Hardware backends (Open Quantum)
 - [ ] More representations
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

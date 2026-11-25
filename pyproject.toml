@@ -24,6 +24,7 @@ image = ["pillow>=10"]
 qml = ["scikit-learn>=1.2"]
 aer = ["qiskit-aer>=0.18"]
 ibm = ["qiskit-aer>=0.18", "qiskit-ibm-runtime>=0.52"]
+openquantum = ["openquantum-sdk[qiskit]>=1.2.2"]
 test = [
     "pytest>=8",
     "scikit-learn>=1.2",

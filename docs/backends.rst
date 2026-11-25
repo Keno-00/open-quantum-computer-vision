@@ -21,3 +21,9 @@ IBM simulated devices
 
 .. automodule:: openqcv.backends.ibm_fake
    :members:
+
+Open Quantum (QPUs)
+-------------------
+
+.. automodule:: openqcv.backends.openquantum
+   :members:

@@ -12,7 +12,8 @@ src/openqcv/
 ├── representations/   QIR base, Circuit builder, QPIE, FRQI, NEQR
 ├── export/            qasm.py (lowering), logical.py (textbook OpenQASM 3)
 ├── backends/          Backend and Provider bases, statevector, simulator,
-│                      aer (Qiskit Aer), ibm_fake (IBM simulated devices)
+│                      aer (Qiskit Aer), ibm_fake (IBM simulated devices),
+│                      openquantum (Open Quantum's QPUs and simulators)
 ├── viz/               circuit.py, image.py, drawing.py (PAPER_STYLE)
 ├── qml/               template (parameterized circuits on backends), qnn,
 │                      models (VQC, VQR, ...), kernels (QSVC), losses,
@@ -80,7 +81,8 @@ approval.
 - Python 3.10+ only syntax, and no deprecated dependency APIs: the test
   suite turns `DeprecationWarning` into errors.
 - Dependencies are numpy, qiskit, scipy and matplotlib (Pillow,
-  scikit-learn, qiskit-aer and qiskit-ibm-runtime optional). Adding one needs the maintainer's approval.
+  scikit-learn, qiskit-aer, qiskit-ibm-runtime and openquantum-sdk
+  optional). Adding one needs the maintainer's approval.
 
 ## Documentation
 
