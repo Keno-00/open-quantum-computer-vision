@@ -7,7 +7,11 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openqcv.backends import BACKENDS, Backend
+from openqcv.backends import (
+    PROVIDERS,
+    Backend,
+    get_backend,
+)
 from openqcv.core.program import ExecutionResult, QasmProgram
 from openqcv.export.qasm import to_program
 from openqcv.representations import QIR, REPRESENTATIONS, EncodedImage
@@ -44,13 +48,28 @@ def encode(
             :class:`~openqcv.representations.EncodedImage`.
     """
     qir = REPRESENTATIONS.create(representation, **options)
+    return to_program(encode_circuit(image, qir), qir.name)
+
+
+def encode_circuit(
+    image: ArrayLike,
+    representation: str | type[QIR] | QIR,
+    **options: Any,
+) -> EncodedImage:
+    """Encode an image like :func:`encode`, without exporting it to QASM.
+
+    Raises:
+        TypeError: If the QIR's ``encode`` does not return an
+            :class:`~openqcv.representations.EncodedImage`.
+    """
+    qir = REPRESENTATIONS.create(representation, **options)
     encoded = qir.encode(image)
     if not isinstance(encoded, EncodedImage):
         raise TypeError(
             f"{type(qir).__name__}.encode must return an EncodedImage, got "
             f"{type(encoded).__name__}"
         )
-    return to_program(encoded, qir.name)
+    return encoded
 
 
 def run(
@@ -63,15 +82,18 @@ def run(
 
     Args:
         program: The program to run.
-        backend: A name from :func:`list_backends`, a class or an instance.
-        shots: Number of samples. ``None`` means exact (``"statevector"``) or
-            the backend's default.
+        backend: ``"provider:backend"`` (see :func:`list_providers` and
+            :func:`list_backends`), a built-in backend's name, a class or an
+            instance.
+        shots: Number of samples. ``None`` means exact (``"statevector"``,
+            exact Aer methods) or the backend's default.
         **options: Passed to the backend, e.g. ``seed=7`` for the simulator.
 
     Raises:
+        ImportError: If the provider's packages are not installed.
         ValueError: If the program has more qubits than the backend allows.
     """
-    chosen = BACKENDS.create(backend, **options)
+    chosen = get_backend(backend, **options)
     limit = chosen.max_qubits
     if limit is not None and program.num_qubits > limit:
         raise ValueError(
@@ -91,9 +113,20 @@ def list_representations() -> list[str]:
     return REPRESENTATIONS.names()
 
 
-def list_backends() -> list[str]:
-    """Return the names accepted by :func:`run`."""
-    return BACKENDS.names()
+def list_backends(provider: str = "openqcv") -> list[str]:
+    """Return the backends of ``provider``, as :func:`run` accepts them.
+
+    The built-in backends are named without a provider; others are
+    ``"provider:backend"``.
+
+    Raises:
+        ImportError: If the provider's packages are not installed.
+        ValueError: If the provider is unknown.
+    """
+    names = PROVIDERS.create(provider).backends()
+    if provider == "openqcv":
+        return names
+    return [f"{provider}:{name}" for name in names]
 
 
 def check(

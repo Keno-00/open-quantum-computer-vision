@@ -11,12 +11,18 @@ src/openqcv/
 ├── image/             as_grayscale, index_qubits, load_image
 ├── representations/   QIR base, Circuit builder, QPIE, FRQI, NEQR
 ├── export/            qasm.py (lowering), logical.py (textbook OpenQASM 3)
-├── backends/          Backend base, statevector, simulator
+├── backends/          Backend and Provider bases, statevector, simulator,
+│                      aer (Qiskit Aer), ibm_fake (IBM simulated devices),
+│                      openquantum (Open Quantum's QPUs and simulators)
 ├── viz/               circuit.py, image.py, drawing.py (PAPER_STYLE)
+├── qml/               template (parameterized circuits on backends), qnn,
+│                      models (VQC, VQR, ...), kernels (QSVC), losses,
+│                      optimizers (SPSA)
 ├── pipeline.py        encode, run, decode, check
 └── qir.py             the public API for writing a QIR (re-exports)
 tests/                 test_roundtrip.py, test_logical.py, test_core.py,
-                       test_qir.py
+                       test_qir.py, test_qml.py, test_providers.py,
+                       test_integration.py (end-to-end paths)
 docs/                  design.md, Sphinx sources (conf.py, *.rst),
                        make_figures.py, images/
 ```
@@ -29,10 +35,14 @@ approval.
 1. Dependency direction: `core` imports nothing from openqcv.
    `representations` and `backends` never import each other; `pipeline` is
    the only module that knows both, and `qir` only re-exports from it.
+   `qml` encodes and runs only through `pipeline` (it imports the other
+   two for type annotations only).
    `viz` reads QASM text, not representation objects.
 2. `QasmProgram` is the contract between representations and backends.
    Everything needed to run, draw or decode an image is in it, and it
-   survives `to_json` / `from_json` unchanged.
+   survives `to_json` / `from_json` unchanged. `qml` sends every circuit
+   evaluation to a backend as a `QasmProgram` with its parameters bound;
+   such a program holds no image and is not decoded.
 3. `decode` is a classmethod and may use only the result and the program,
    never encoding options, so a received program is decodable by anyone.
 4. Backends read only `program.qasm2` / `program.qasm3` and return
@@ -70,8 +80,9 @@ approval.
   images).
 - Python 3.10+ only syntax, and no deprecated dependency APIs: the test
   suite turns `DeprecationWarning` into errors.
-- Dependencies are numpy, qiskit and matplotlib (Pillow optional). Adding
-  one needs the maintainer's approval.
+- Dependencies are numpy, qiskit, scipy and matplotlib (Pillow,
+  scikit-learn, qiskit-aer, qiskit-ibm-runtime and openquantum-sdk
+  optional). Adding one needs the maintainer's approval.
 
 ## Documentation
 
@@ -153,3 +164,15 @@ Built-in QIRs use the same API as users' QIRs (`openqcv.qir`).
    an error.
 4. Add round-trip tests, skipped with a stated reason when credentials or
    hardware are unavailable.
+
+## Adding a provider
+
+A provider offers backends chosen as `"provider:backend"`.
+
+1. Subclass `Provider` with a `name`, `backends()` and `backend(name,
+   **options)`; decorate it with `@register_provider`, or declare it under
+   the `openqcv.providers` entry point group in another package.
+2. If it needs packages openqcv does not depend on, import them inside its
+   methods, implement `available()`, and raise `ImportError` with the
+   install command when they are missing.
+3. Its backends follow every rule of "Adding a backend".

@@ -2,6 +2,8 @@
 
 The public workflow is :func:`encode`, :func:`run` and :func:`decode`;
 :func:`draw`, :func:`draw_image` and :func:`compare` make figures.
+:mod:`openqcv.qir` is the API for writing a QIR, and :mod:`openqcv.qml`
+trains models on encoded images.
 Circuits are built, lowered and simulated with Qiskit.
 
 References:
@@ -9,7 +11,8 @@ References:
     arXiv:2405.08810
 """
 
-from openqcv import qir
+from openqcv import qir, qml
+from openqcv.backends import list_providers
 from openqcv.core.program import ExecutionResult, QasmProgram
 from openqcv.image import load_image
 from openqcv.pipeline import (
@@ -32,8 +35,10 @@ __all__ = [
     "draw_image",
     "encode",
     "list_backends",
+    "list_providers",
     "list_representations",
     "load_image",
     "qir",
+    "qml",
     "run",
 ]

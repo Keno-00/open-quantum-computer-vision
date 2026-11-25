@@ -139,9 +139,14 @@ def _statement(operation: Instruction, args: list[str]) -> str:
     params = ""
     if operation.params:
         params = (
-            "(" + ", ".join(f"{float(p):.12g}" for p in operation.params) + ")"
+            "(" + ", ".join(format_angle(p) for p in operation.params) + ")"
         )
     return f"{modifiers}{operation.name}{params} {', '.join(args)};"
+
+
+def format_angle(value: float) -> str:
+    """Write a gate parameter as logical QASM does: 12 significant digits."""
+    return f"{float(value):.12g}"
 
 
 # ---------------------------------------------------------------------- read
