@@ -82,6 +82,15 @@ textbook-style figures.
    ```sh
    pip install -e "open-quantum-computer-vision[image]"
    ```
+4. Optional: scikit-learn, for `qcv.qml.QSVC`
+   ```sh
+   pip install -e "open-quantum-computer-vision[qml]"
+   ```
+5. Optional: Qiskit Aer and IBM's simulated devices, as backends
+   `"aer:<method>"` and `"ibm_fake:<device>"` (see `qcv.list_providers()`)
+   ```sh
+   pip install -e "open-quantum-computer-vision[aer,ibm]"
+   ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

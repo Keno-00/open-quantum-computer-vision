@@ -63,20 +63,8 @@ def to_program(
             f"meta must be JSON-serializable with finite numbers: {error}"
         ) from None
 
-    circuit = encoded.circuit.copy()
-    circuit.add_register(
-        ClassicalRegister(circuit.num_qubits, MEASUREMENT_REGISTER)
-    )
-    circuit.measure(range(circuit.num_qubits), range(circuit.num_qubits))
-
-    # Blocks can sit anywhere, so never let synthesis assume a qubit is still
-    # |0> and borrow it as a clean ancilla: that silently corrupts the state.
-    lowered = transpile(
-        circuit,
-        basis_gates=[*basis, "measure"],
-        optimization_level=1,
-        qubits_initially_zero=False,
-    )
+    circuit = measured(encoded.circuit)
+    lowered = lower(circuit, basis)
 
     return QasmProgram(
         representation=representation,
@@ -85,6 +73,34 @@ def to_program(
         qasm3=qasm3.dumps(lowered),
         registers=encoded.registers,
         meta=meta,
+    )
+
+
+def measured(circuit: QuantumCircuit) -> QuantumCircuit:
+    """Return a copy of ``circuit`` measuring qubit ``j`` into ``meas[j]``."""
+    circuit = circuit.copy()
+    circuit.add_register(
+        ClassicalRegister(circuit.num_qubits, MEASUREMENT_REGISTER)
+    )
+    circuit.measure(range(circuit.num_qubits), range(circuit.num_qubits))
+    return circuit
+
+
+def lower(
+    circuit: QuantumCircuit, basis: Sequence[str] = DEFAULT_BASIS
+) -> QuantumCircuit:
+    """Rewrite ``circuit`` in ``basis`` gates and measurements.
+
+    Parameters may stay unbound; they end up in the angles of the rotation
+    gates. Qubits keep their order and registers.
+    """
+    # Blocks can sit anywhere, so never let synthesis assume a qubit is still
+    # |0> and borrow it as a clean ancilla: that silently corrupts the state.
+    return transpile(
+        circuit,
+        basis_gates=[*basis, "measure"],
+        optimization_level=1,
+        qubits_initially_zero=False,
     )
 
 

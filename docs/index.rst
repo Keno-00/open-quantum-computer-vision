@@ -12,6 +12,7 @@ Installation and a first example are in the
    workflow
    representations
    qir
+   qml
    programs
    export
    backends
