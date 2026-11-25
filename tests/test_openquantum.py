@@ -7,6 +7,7 @@ reference simulator and returns counts as Open Quantum does (bit 0
 rightmost, as its plugin reads them).
 """
 
+import json
 import sys
 from types import SimpleNamespace
 
@@ -277,3 +278,97 @@ def test_missing_sdk_is_reported(monkeypatch):
         ImportError, match=r'pip install "openqcv\[openquantum\]"'
     ):
         PROVIDERS.create("openquantum")
+
+
+# ------------------------------------------------------------ credentials
+
+SECRET = "not-a-real-secret-7f3a"
+
+
+class RecordingService:
+    """Stands in for OpenQuantumService; records how it was created."""
+
+    created = []
+    saved = []
+
+    def __init__(self, **kwargs):
+        RecordingService.created.append(kwargs)
+
+    @staticmethod
+    def save_account(**kwargs):
+        """Record a saved account instead of writing it."""
+        RecordingService.saved.append(kwargs)
+
+
+@pytest.fixture
+def recording(monkeypatch):
+    RecordingService.created, RecordingService.saved = [], []
+    monkeypatch.setattr(plugin, "OpenQuantumService", RecordingService)
+    monkeypatch.setattr(openquantum, "_SERVICE", [])
+    return RecordingService
+
+
+def test_connect_with_client_id_and_secret_from_code(recording):
+    service = openquantum.connect(client_id="s_abc", client_secret=SECRET)
+    (kwargs,) = recording.created
+    assert kwargs["creds"].client_id == "s_abc"
+    assert kwargs["creds"].client_secret == SECRET
+    assert kwargs["auto_load"] is False  # code wins over saved accounts
+    assert openquantum.service() is service
+    assert recording.saved == []
+
+
+def test_connect_with_a_key_file(recording, tmp_path):
+    key = tmp_path / "sdk-key.json"
+    key.write_text(
+        json.dumps({"client_id": "s_file", "client_secret": SECRET})
+    )
+    openquantum.connect(sdk_key_path=key)
+    assert recording.created[0]["creds"].client_id == "s_file"
+
+
+def test_connect_with_a_token_or_a_saved_account(recording):
+    openquantum.connect(token="jwt")
+    assert recording.created[-1]["token"] == "jwt"
+    openquantum.connect(account_name="lab")
+    assert recording.created[-1] == {"account_name": "lab"}
+    openquantum.connect()
+    assert recording.created[-1] == {"account_name": None}
+
+
+def test_connect_can_save_the_key(recording):
+    openquantum.connect(
+        client_id="s_abc",
+        client_secret=SECRET,
+        save=True,
+        account_name="lab",
+    )
+    (saved,) = recording.saved
+    assert saved["name"] == "lab"
+    assert saved["creds"].client_secret == SECRET
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ({"client_id": "s_abc"}, "must be given together"),
+        ({"client_secret": SECRET}, "must be given together"),
+        (
+            {"client_id": "s_abc", "client_secret": SECRET, "token": "jwt"},
+            "Give one source of credentials, not client_id/client_secret "
+            "and token",
+        ),
+        (
+            {"token": "jwt", "account_name": "lab"},
+            "not token and account_name",
+        ),
+        ({"save": True}, "save=True needs client_id and client_secret"),
+    ],
+)
+def test_connect_validation_never_shows_the_secret(
+    recording, options, message
+):
+    with pytest.raises(ValueError, match=message) as error:
+        openquantum.connect(**options)
+    assert SECRET not in str(error.value)
+    assert recording.created == []

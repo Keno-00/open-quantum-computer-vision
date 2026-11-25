@@ -18,29 +18,66 @@ each device and to submit them.
 Account and credentials
 -----------------------
 Create an account at https://openquantum.com, then an SDK key at
-https://openquantum.com/keys ("Create SDK Key"; the secret is shown once).
-New accounts receive free credits. Give openqcv the key in one of these ways:
+https://openquantum.com/keys ("Create SDK Key"). A key is a client ID
+(``s_...``) and a client secret, which is shown only once. New accounts
+receive free credits.
 
-* Save it once, and every later session finds it::
+The secret spends your credits, so treat it like a password: it must not
+end up in a file you commit, share, or publish (scripts, notebooks and
+their outputs, logs, screenshots). The ways to give it to openqcv, safest
+first:
 
-      from openquantum_sdk.auth import ClientCredentials
-      from openquantum_sdk_qiskit import OpenQuantumService
+1. **Save it once, in the system's credential store.** Install ``keyring``
+   (``pip install keyring``), then save the key once from an interactive
+   Python session, not from a script file::
 
-      OpenQuantumService.save_account(
-          name="default",
-          creds=ClientCredentials(client_id="s_...", client_secret="..."),
-      )
+       import getpass
 
-* Or set ``OPENQUANTUM_CLIENT_ID`` and ``OPENQUANTUM_CLIENT_SECRET``, or
-  ``OPENQUANTUM_SDK_KEY`` (the path of the key's JSON file), or
-  ``OPENQUANTUM_TOKEN`` (an access token).
+       from openqcv.backends import openquantum
 
-* Or connect explicitly for this process with :func:`connect`, which takes
-  the arguments of ``OpenQuantumService`` (``token=``, ``creds=``,
-  ``account_name=``, ...).
+       openquantum.connect(
+           client_id=input("client id: "),
+           client_secret=getpass.getpass("client secret: "),
+           save=True,
+       )
 
-The saved account is tried first, then the environment variables. If you
-belong to several organizations, pass ``organization_id`` (below).
+   With ``keyring`` the secret goes to Windows Credential Manager, the
+   macOS Keychain or the Secret Service on Linux, and every later session
+   finds it with no code at all. Without ``keyring``, Open Quantum's SDK
+   writes it in plain text to ``~/.openquantum/accounts.json``, which any
+   program running as you can read.
+
+2. **Environment variables**, set outside the code: in your shell profile,
+   your IDE's run configuration, or your CI service's secret store. openqcv
+   reads ``OPENQUANTUM_CLIENT_ID`` and ``OPENQUANTUM_CLIENT_SECRET``, or
+   ``OPENQUANTUM_SDK_KEY`` (the path of the key's JSON file), or
+   ``OPENQUANTUM_TOKEN`` (an access token). If you keep them in a ``.env``
+   file, add it to ``.gitignore``.
+
+3. **A key file outside the project**, e.g. ``~/.openquantum/sdk-key.json``
+   with ``{"client_id": ..., "client_secret": ...}``:
+   ``openquantum.connect(sdk_key_path=...)`` or ``OPENQUANTUM_SDK_KEY``.
+
+4. **In your code**, as constants or variables, with :func:`connect`::
+
+       import os
+
+       from openqcv.backends import openquantum
+
+       openquantum.connect(
+           client_id=os.environ["MY_OQ_ID"],
+           client_secret=os.environ["MY_OQ_SECRET"],
+       )
+
+   This works with literal strings too
+   (``client_id="s_...", client_secret="..."``), but then the file holds
+   the secret: keep it out of version control and never share it. Prefer
+   reading the values from the environment or a secret manager, as above.
+
+Without :func:`connect`, openqcv uses the saved account, then the
+environment variables. If a secret is ever exposed, replace the key at
+https://openquantum.com/keys. If you belong to several organizations, pass
+``organization_id`` (below).
 
 Choosing a backend
 ------------------
@@ -140,6 +177,7 @@ credits. ``409``: the organization's active-job limit is reached. A
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from qiskit import QuantumCircuit, transpile
@@ -173,17 +211,88 @@ def require_plugin() -> Any:
     return openquantum_sdk_qiskit
 
 
-def connect(**options: Any) -> Any:
+def connect(
+    *,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    sdk_key_path: str | os.PathLike[str] | None = None,
+    token: str | None = None,
+    account_name: str | None = None,
+    save: bool = False,
+    **service_options: Any,
+) -> Any:
     """Connect to Open Quantum for this process; return the service.
 
+    Give at most one source of credentials; with none, the saved account
+    is used, then the environment variables. See the module's "Account and
+    credentials" for which source to prefer: a secret written in code ends
+    up wherever the code goes.
+
     Args:
-        **options: Passed to ``OpenQuantumService``: ``token``, ``creds``,
-            ``account_name``, ``accounts_file``, service URLs.
+        client_id: The SDK key's client ID (``s_...``); needs
+            ``client_secret``.
+        client_secret: The SDK key's client secret.
+        sdk_key_path: A JSON file with ``client_id`` and ``client_secret``.
+        token: An access token, instead of a key.
+        account_name: A saved account's name (the default one is
+            ``"default"``).
+        save: Also save the given key or token as ``account_name`` (default
+            ``"default"``), in the system keyring when ``keyring`` is
+            installed, so later sessions need no credentials in code.
+        **service_options: Passed to ``OpenQuantumService``, e.g.
+            ``accounts_file`` or service URLs.
 
     Raises:
         ImportError: If Open Quantum's SDK is not installed.
+        ValueError: If only one of ``client_id`` and ``client_secret`` is
+            given, several sources are given, or ``save`` has nothing to
+            save. Messages never contain a secret.
     """
-    service = require_plugin().OpenQuantumService(**options)
+    plugin = require_plugin()
+    if (client_id is None) != (client_secret is None):
+        raise ValueError("client_id and client_secret must be given together")
+    sources = [
+        name
+        for name, given in (
+            ("client_id/client_secret", client_id is not None),
+            ("sdk_key_path", sdk_key_path is not None),
+            ("token", token is not None),
+            ("account_name", account_name is not None and not save),
+        )
+        if given
+    ]
+    if len(sources) > 1:
+        raise ValueError(
+            f"Give one source of credentials, not {' and '.join(sources)}"
+        )
+    creds = None
+    if client_id is not None:
+        from openquantum_sdk.auth import ClientCredentials
+
+        creds = ClientCredentials(
+            client_id=client_id, client_secret=client_secret
+        )
+    elif sdk_key_path is not None:
+        from openquantum_sdk.credentials import load_creds_from_file
+
+        creds = load_creds_from_file(os.fspath(sdk_key_path))
+    if save:
+        if creds is None and token is None:
+            raise ValueError(
+                "save=True needs client_id and client_secret, sdk_key_path "
+                "or token"
+            )
+        plugin.OpenQuantumService.save_account(
+            name=account_name or "default", creds=creds, token=token
+        )
+    if creds is not None or token is not None:
+        service = plugin.OpenQuantumService(
+            creds=creds, token=token, auto_load=False, **service_options
+        )
+    else:
+        service = plugin.OpenQuantumService(
+            account_name=account_name, **service_options
+        )
     _SERVICE[:] = [service]
     return service
 
